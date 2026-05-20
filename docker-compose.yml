@@ -39,7 +39,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: python -m edge_ai.pipeline
+    command: python -m edge_ai
     env_file:
       - .env
     depends_on:

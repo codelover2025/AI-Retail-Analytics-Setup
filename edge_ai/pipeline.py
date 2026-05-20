@@ -27,6 +27,8 @@ class RetailAnalyticsPipeline:
         self.tracker = FaceTracker()
         self._running = False
         self._processed_tracks: set[int] = set()
+        # One recognition / visit increment per ByteTrack ID per appearance (not every frame).
+        self._visit_recorded_for_track: set[int] = set()
 
     def run(self, max_frames: Optional[int] = None) -> None:
         init_db()
@@ -76,15 +78,17 @@ class RetailAnalyticsPipeline:
                 bbox = face.bbox.tolist()
                 match = matcher.identify(face.track_id, face.embedding)
 
-                repo.record_visit(
-                    match.visitor,
-                    store_id=self.settings.store_id,
-                    camera_id=self.settings.camera_id,
-                    track_id=face.track_id,
-                    confidence=match.confidence if not match.is_new else face.score,
-                    is_new_visitor=match.is_new,
-                    bbox=bbox,
-                )
+                if face.track_id not in self._visit_recorded_for_track:
+                    repo.record_visit(
+                        match.visitor,
+                        store_id=self.settings.store_id,
+                        camera_id=self.settings.camera_id,
+                        track_id=face.track_id,
+                        confidence=match.confidence if not match.is_new else face.score,
+                        is_new_visitor=match.is_new,
+                        bbox=bbox,
+                    )
+                    self._visit_recorded_for_track.add(face.track_id)
 
                 repo.upsert_live_visitor(
                     store_id=self.settings.store_id,
