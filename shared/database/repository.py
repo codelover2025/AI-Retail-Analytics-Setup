@@ -17,12 +17,17 @@ def _utcnow() -> datetime:
 class AnalyticsRepository:
     """Persistence layer shared by edge pipeline and API."""
 
-    def __init__(self, db: Session, settings: Settings):
+    def __init__(self, db: Session, settings: Settings, brand_id: uuid.UUID):
         self.db = db
         self.settings = settings
+        self.brand_id = brand_id
 
     def list_visitors_with_embeddings(self) -> list[Visitor]:
-        return list(self.db.scalars(select(Visitor)).all())
+        return list(
+            self.db.scalars(
+                select(Visitor).where(Visitor.brand_id == self.brand_id)
+            ).all()
+        )
 
     def find_best_match(
         self, embedding: np.ndarray, threshold: Optional[float] = None
@@ -55,6 +60,7 @@ class AnalyticsRepository:
         is_vip: bool = False,
     ) -> Visitor:
         visitor = Visitor(
+            brand_id=self.brand_id,
             embedding=embedding,
             display_name=display_name,
             is_vip=is_vip,
@@ -80,6 +86,7 @@ class AnalyticsRepository:
         visitor.visit_count += 1
         visitor.last_seen_at = _utcnow()
         recognition = Recognition(
+            brand_id=self.brand_id,
             store_id=store_id,
             camera_id=camera_id,
             visitor_id=visitor.id,
@@ -97,12 +104,14 @@ class AnalyticsRepository:
         today = _utcnow().date()
         row = self.db.scalar(
             select(FootfallDaily).where(
+                FootfallDaily.brand_id == self.brand_id,
                 FootfallDaily.store_id == store_id,
                 FootfallDaily.day == today,
             )
         )
         if row is None:
             row = FootfallDaily(
+                brand_id=self.brand_id,
                 store_id=store_id,
                 day=today,
                 unique_visitors=0,
@@ -115,12 +124,14 @@ class AnalyticsRepository:
         today = _utcnow().date()
         row = self.db.scalar(
             select(FootfallDaily).where(
+                FootfallDaily.brand_id == self.brand_id,
                 FootfallDaily.store_id == store_id,
                 FootfallDaily.day == today,
             )
         )
         if row is None:
             row = FootfallDaily(
+                brand_id=self.brand_id,
                 store_id=store_id,
                 day=today,
                 unique_visitors=1,
@@ -142,6 +153,7 @@ class AnalyticsRepository:
     ) -> LiveVisitor:
         existing = self.db.scalar(
             select(LiveVisitor).where(
+                LiveVisitor.brand_id == self.brand_id,
                 LiveVisitor.store_id == store_id,
                 LiveVisitor.camera_id == camera_id,
                 LiveVisitor.track_id == track_id,
@@ -156,6 +168,7 @@ class AnalyticsRepository:
             return existing
 
         live = LiveVisitor(
+            brand_id=self.brand_id,
             store_id=store_id,
             camera_id=camera_id,
             track_id=track_id,
@@ -171,6 +184,7 @@ class AnalyticsRepository:
         cutoff = _utcnow() - timedelta(seconds=max_age_seconds)
         result = self.db.execute(
             delete(LiveVisitor).where(
+                LiveVisitor.brand_id == self.brand_id,
                 LiveVisitor.store_id == store_id,
                 LiveVisitor.last_seen_at < cutoff,
             )
@@ -187,6 +201,7 @@ class AnalyticsRepository:
         payload: Optional[dict[str, Any]] = None,
     ) -> Alert:
         alert = Alert(
+            brand_id=self.brand_id,
             store_id=store_id,
             visitor_id=visitor_id,
             alert_type=alert_type,
@@ -210,7 +225,11 @@ class AnalyticsRepository:
         return (count or 0) > 1
 
     def get_live_visitors(self, store_id: Optional[str] = None) -> list[LiveVisitor]:
-        stmt = select(LiveVisitor).order_by(LiveVisitor.last_seen_at.desc())
+        stmt = (
+            select(LiveVisitor)
+            .where(LiveVisitor.brand_id == self.brand_id)
+            .order_by(LiveVisitor.last_seen_at.desc())
+        )
         if store_id:
             stmt = stmt.where(LiveVisitor.store_id == store_id)
         return list(self.db.scalars(stmt).all())
@@ -220,7 +239,12 @@ class AnalyticsRepository:
         store_id: Optional[str] = None,
         limit: int = 100,
     ) -> list[Recognition]:
-        stmt = select(Recognition).order_by(Recognition.recognized_at.desc()).limit(limit)
+        stmt = (
+            select(Recognition)
+            .where(Recognition.brand_id == self.brand_id)
+            .order_by(Recognition.recognized_at.desc())
+            .limit(limit)
+        )
         if store_id:
             stmt = stmt.where(Recognition.store_id == store_id)
         return list(self.db.scalars(stmt).all())
@@ -230,7 +254,11 @@ class AnalyticsRepository:
         store_id: Optional[str] = None,
         from_day: Optional[date] = None,
     ) -> list[FootfallDaily]:
-        stmt = select(FootfallDaily).order_by(FootfallDaily.day.desc())
+        stmt = (
+            select(FootfallDaily)
+            .where(FootfallDaily.brand_id == self.brand_id)
+            .order_by(FootfallDaily.day.desc())
+        )
         if store_id:
             stmt = stmt.where(FootfallDaily.store_id == store_id)
         if from_day:
@@ -243,7 +271,12 @@ class AnalyticsRepository:
         limit: int = 50,
         unacknowledged_only: bool = False,
     ) -> list[Alert]:
-        stmt = select(Alert).order_by(Alert.created_at.desc()).limit(limit)
+        stmt = (
+            select(Alert)
+            .where(Alert.brand_id == self.brand_id)
+            .order_by(Alert.created_at.desc())
+            .limit(limit)
+        )
         if store_id:
             stmt = stmt.where(Alert.store_id == store_id)
         if unacknowledged_only:

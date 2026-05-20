@@ -4,14 +4,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend_core.api.routes import router as api_router
+from backend_core.api.v1 import api_v1
 from backend_core.api.websocket import router as ws_router
 from shared.database.session import init_db
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
-    title="Retail Analytics API",
-    description="Dashboard APIs for live visitors, recognitions, footfall, and alerts",
+    title="Orzen Vision API",
+    description="Phase 1: multi-tenant edge-cloud platform + analytics APIs",
     version="1.0.0",
 )
 
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(api_v1)
 app.include_router(api_router)
 app.include_router(ws_router)
 
@@ -34,7 +36,12 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "phase": 1}
+
+
+@app.get("/api/v1/health")
+def health_v1():
+    return {"status": "ok", "phase": 1}
 
 
 def run() -> None:

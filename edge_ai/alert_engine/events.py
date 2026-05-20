@@ -25,8 +25,8 @@ class PipelineEvent:
 class AlertEngine:
     """Generates VIP and repeat-visitor alerts from recognition outcomes."""
 
-    def __init__(self, db: Session, settings: Settings):
-        self.repo = AnalyticsRepository(db, settings)
+    def __init__(self, db: Session, settings: Settings, brand_id):
+        self.repo = AnalyticsRepository(db, settings, brand_id)
         self.settings = settings
         self._redis = None
         if settings.redis_url:

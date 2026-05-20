@@ -22,7 +22,9 @@ if str(ROOT) not in sys.path:
 
 from edge_ai.detection.mock_detector import MockFaceDetector
 from edge_ai.pipeline import RetailAnalyticsPipeline
-from shared.database.session import init_db
+from shared.database.session import SessionLocal, init_db
+from shared.tenant_resolve import resolve_brand_id
+from shared.config import get_settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,6 +49,17 @@ def _synthetic_frame(width: int = 640, height: int = 480) -> np.ndarray:
 
 def run_synthetic(frames: int) -> None:
     init_db()
+    db = SessionLocal()
+    try:
+        resolve_brand_id(db, get_settings())
+        db.commit()
+    except RuntimeError as exc:
+        print(exc)
+        print("Run: python scripts/seed_phase1.py")
+        return
+    finally:
+        db.close()
+
     pipeline = RetailAnalyticsPipeline(source="0")
     pipeline.detector = MockFaceDetector(faces_per_frame=1)
     logger.info(

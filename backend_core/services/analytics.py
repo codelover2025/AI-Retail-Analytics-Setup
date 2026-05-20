@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime, timezone
 
 from sqlalchemy import func, select
@@ -32,13 +33,15 @@ def _recognition_type(rec: Recognition, visitor: Visitor) -> RecognitionType:
 
 
 class AnalyticsService:
-    def __init__(self, db: Session, settings: Settings):
+    def __init__(self, db: Session, settings: Settings, brand_id: uuid.UUID):
         self.db = db
         self.settings = settings
-        self.repo = AnalyticsRepository(db, settings)
+        self.repo = AnalyticsRepository(db, settings, brand_id)
 
     def live_visitors(self, store_id: str | None) -> LiveVisitorsResponse:
-        stmt = select(func.count(LiveVisitor.id), func.max(LiveVisitor.last_seen_at))
+        stmt = select(func.count(LiveVisitor.id), func.max(LiveVisitor.last_seen_at)).where(
+            LiveVisitor.brand_id == self.repo.brand_id
+        )
         if store_id:
             stmt = stmt.where(LiveVisitor.store_id == store_id)
         count, last_seen = self.db.execute(stmt).one()
@@ -87,6 +90,7 @@ class AnalyticsService:
         bucket = func.date_trunc("hour", Recognition.recognized_at).label("bucket_start")
         stmt = (
             select(bucket, func.count().label("cnt"))
+            .where(Recognition.brand_id == self.repo.brand_id)
             .group_by(bucket)
             .order_by(bucket.desc())
             .limit(hourly_limit)

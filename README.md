@@ -1,8 +1,11 @@
-# AI Retail Analytics (edge + API)
+# Orzen Vision — edge + API (retail analytics core)
 
-Real-time retail analytics: **RTSP/webcam → InsightFace detect/embed → ByteTrack → cosine match → PostgreSQL → FastAPI**.
+Product brief: **`Orzen_Vision_Freelance_Brief.docx`**.  
+**Phase 1 (current):** **[docs/PHASE1.md](docs/PHASE1.md)** · Full roadmap: **[docs/ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md)**
 
-No dashboard in this repo—only **edge-ai** (video) and **backend-core** (HTTP APIs + shared DB models).
+This repo is the **edge inference + face recognition + tracking + FastAPI + PostgreSQL** foundation for Orzen Vision (jewellery retail). Phase 1 adds **multi-tenant SaaS**, **edge↔cloud auth/heartbeat**, and **multi-camera** RTSP. Dashboards, WhatsApp, HRMS/POS/CRM, and LLM are later phases.
+
+Pipeline: **RTSP/webcam → InsightFace detect/embed → ByteTrack → cosine match → PostgreSQL → FastAPI**.
 
 ## Layout
 

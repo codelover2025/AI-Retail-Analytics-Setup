@@ -26,6 +26,9 @@ class Visitor(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True, nullable=False
+    )
     external_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(128))
     embedding: Mapped[list[float]] = mapped_column(JSONB, nullable=False)
@@ -48,6 +51,9 @@ class Recognition(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True, nullable=False
+    )
     store_id: Mapped[str] = mapped_column(String(64), index=True)
     camera_id: Mapped[str] = mapped_column(String(64), index=True)
     visitor_id: Mapped[uuid.UUID] = mapped_column(
@@ -68,6 +74,9 @@ class LiveVisitor(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True, nullable=False
+    )
     store_id: Mapped[str] = mapped_column(String(64), index=True)
     camera_id: Mapped[str] = mapped_column(String(64), index=True)
     track_id: Mapped[int] = mapped_column(Integer, index=True)
@@ -87,6 +96,9 @@ class FootfallDaily(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True, nullable=False
+    )
     store_id: Mapped[str] = mapped_column(String(64), index=True)
     day: Mapped[date] = mapped_column(Date, index=True)
     unique_visitors: Mapped[int] = mapped_column(Integer, default=0)
@@ -98,6 +110,9 @@ class Alert(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    brand_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True, nullable=False
     )
     store_id: Mapped[str] = mapped_column(String(64), index=True)
     visitor_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))

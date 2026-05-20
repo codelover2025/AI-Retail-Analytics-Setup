@@ -21,8 +21,8 @@ class MatchResult:
 class FaceMatcher:
     """Cosine-similarity face recognition against stored visitor embeddings."""
 
-    def __init__(self, db: Session, settings: Settings):
-        self.repo = AnalyticsRepository(db, settings)
+    def __init__(self, db: Session, settings: Settings, brand_id):
+        self.repo = AnalyticsRepository(db, settings, brand_id)
         self.settings = settings
         self._track_visitor: dict[int, uuid.UUID] = {}
 
