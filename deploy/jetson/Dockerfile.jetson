@@ -1,0 +1,23 @@
+# Jetson base — use L4T image matching your JetPack on device.
+# Example tag; adjust for your JetPack / DeepStream version.
+FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt requirements-ml.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt -r requirements-ml.txt
+
+COPY shared/ shared/
+COPY edge_ai/ edge_ai/
+COPY backend_core/ backend_core/
+COPY scripts/ scripts/
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python3", "-m", "edge_ai.deepstream.runner"]

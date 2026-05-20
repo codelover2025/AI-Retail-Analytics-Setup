@@ -1,0 +1,27 @@
+# Orzen Vision — DeepStream app template (Jetson)
+# Wire streammux URIs from edge config API at runtime in Phase 2.
+
+[application]
+enable-perf-measurement=1
+
+[tiled-display]
+enable=0
+
+[source0]
+enable=1
+type=4
+uri=rtsp://127.0.0.1/stream1
+
+[streammux]
+batch-size=4
+width=1280
+height=720
+batched-push-timeout=40000
+
+[primary-gie]
+enable=1
+# Person detector PGIE — replace with your YOLO/engine path on Jetson
+config-file=config/pgie_yolo.txt
+
+[sink0]
+enable=0

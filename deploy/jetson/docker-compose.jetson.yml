@@ -1,0 +1,19 @@
+# Jetson Orin — edge appliance (Phase 1)
+# Requires NVIDIA Container Runtime on the host.
+
+services:
+  edge-ai:
+    build:
+      context: ../..
+      dockerfile: deploy/jetson/Dockerfile.jetson
+    runtime: nvidia
+    network_mode: host
+    env_file:
+      - ../../.env
+    environment:
+      PIPELINE_BACKEND: ${PIPELINE_BACKEND:-opencv}
+      BACKEND_URL: ${BACKEND_URL}
+      EDGE_API_KEY: ${EDGE_API_KEY}
+    volumes:
+      - ../../edge_ai/deepstream/config:/app/edge_ai/deepstream/config:ro
+    restart: unless-stopped

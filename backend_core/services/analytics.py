@@ -16,6 +16,7 @@ from backend_core.schemas.contract import (
 from shared.config import Settings
 from shared.database.models import Alert, FootfallDaily, LiveVisitor, Recognition, Visitor
 from shared.database.repository import AnalyticsRepository
+from shared.database.session import is_sqlite
 
 
 def _utcnow() -> datetime:
@@ -87,7 +88,14 @@ class AnalyticsService:
             for r in daily_rows
         ]
 
-        bucket = func.date_trunc("hour", Recognition.recognized_at).label("bucket_start")
+        if is_sqlite():
+            bucket = func.strftime(
+                "%Y-%m-%d %H:00:00", Recognition.recognized_at
+            ).label("bucket_start")
+        else:
+            bucket = func.date_trunc("hour", Recognition.recognized_at).label(
+                "bucket_start"
+            )
         stmt = (
             select(bucket, func.count().label("cnt"))
             .where(Recognition.brand_id == self.repo.brand_id)
@@ -98,10 +106,12 @@ class AnalyticsService:
         if store_id:
             stmt = stmt.where(Recognition.store_id == store_id)
         hourly_raw = self.db.execute(stmt).all()
-        hourly = [
-            FootfallHourlyPoint(bucket_start=row.bucket_start, count=int(row.cnt))
-            for row in hourly_raw
-        ]
+        hourly = []
+        for row in hourly_raw:
+            ts = row.bucket_start
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(ts.replace(" ", "T"))
+            hourly.append(FootfallHourlyPoint(bucket_start=ts, count=int(row.cnt)))
         return FootfallResponse(daily=daily, hourly=hourly)
 
     def alerts(
