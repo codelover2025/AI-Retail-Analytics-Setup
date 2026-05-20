@@ -100,46 +100,34 @@ class AnalyticsRepository:
         self._increment_footfall(store_id)
         return recognition
 
-    def _increment_footfall(self, store_id: str) -> None:
-        today = _utcnow().date()
+    def _get_or_create_footfall_row(self, store_id: str, day: date) -> FootfallDaily:
         row = self.db.scalar(
             select(FootfallDaily).where(
                 FootfallDaily.brand_id == self.brand_id,
                 FootfallDaily.store_id == store_id,
-                FootfallDaily.day == today,
+                FootfallDaily.day == day,
             )
         )
-        if row is None:
-            row = FootfallDaily(
-                brand_id=self.brand_id,
-                store_id=store_id,
-                day=today,
-                unique_visitors=0,
-                total_detections=0,
-            )
-            self.db.add(row)
+        if row is not None:
+            return row
+        row = FootfallDaily(
+            brand_id=self.brand_id,
+            store_id=store_id,
+            day=day,
+            unique_visitors=0,
+            total_detections=0,
+        )
+        self.db.add(row)
+        self.db.flush()
+        return row
+
+    def _increment_footfall(self, store_id: str) -> None:
+        row = self._get_or_create_footfall_row(store_id, _utcnow().date())
         row.total_detections += 1
 
     def increment_unique_footfall(self, store_id: str) -> None:
-        today = _utcnow().date()
-        row = self.db.scalar(
-            select(FootfallDaily).where(
-                FootfallDaily.brand_id == self.brand_id,
-                FootfallDaily.store_id == store_id,
-                FootfallDaily.day == today,
-            )
-        )
-        if row is None:
-            row = FootfallDaily(
-                brand_id=self.brand_id,
-                store_id=store_id,
-                day=today,
-                unique_visitors=1,
-                total_detections=0,
-            )
-            self.db.add(row)
-        else:
-            row.unique_visitors += 1
+        row = self._get_or_create_footfall_row(store_id, _utcnow().date())
+        row.unique_visitors += 1
 
     def upsert_live_visitor(
         self,

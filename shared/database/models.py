@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
 )
@@ -88,6 +89,11 @@ class LiveVisitor(Base):
 
 class FootfallDaily(Base):
     __tablename__ = "footfall_daily"
+    __table_args__ = (
+        UniqueConstraint(
+            "brand_id", "store_id", "day", name="uq_footfall_brand_store_day"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4

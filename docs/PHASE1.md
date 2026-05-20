@@ -1,6 +1,7 @@
 # Phase 1 — Architecture, Infrastructure & Edge Pipeline
 
-**Timeline:** 2 weeks · **Your focus now**
+**Timeline:** 2 weeks · **Your focus now**  
+**Done vs left:** [PHASE1_STATUS.md](./PHASE1_STATUS.md)
 
 ## Deliverables in this repo
 
@@ -83,14 +84,70 @@ Dev fallback (no JWT): `X-API-Key` + `X-Brand-Slug` + `X-Store-Id` headers.
 - Jetson: use `deploy/jetson/docker-compose.jetson.yml`
 - DeepStream SGIE face plugin: **Phase 2** (runner validates `pyds` only)
 
+## Phase 1 handoff (items 148–152 in PHASE1_STATUS)
+
+### 1. Fix footfall duplicate rows
+
+```powershell
+python scripts/merge_footfall_daily.py
+```
+
+Merges existing duplicates and adds unique index on `(brand_id, store_id, day)`. New code uses a single upsert path in `AnalyticsRepository`.
+
+### 2. Test JWT flow
+
+```powershell
+.\scripts\verify_phase1_handoff.ps1
+```
+
+Or manually:
+
+```powershell
+$token = Invoke-RestMethod -Uri "http://localhost:8000/api/v1/auth/token" -Method POST `
+  -Headers @{ "X-API-Key" = "dev-dashboard-key"; "Content-Type" = "application/json" } `
+  -Body '{"brand_slug":"orzen-demo","store_id":"store-001"}'
+
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/analytics/live-visitors" `
+  -Headers @{ Authorization = "Bearer $($token.access_token)" }
+```
+
+### 3. Test multi-camera
+
+In `.env`:
+
+```env
+MULTI_CAMERA_ENABLED=true
+CAMERAS_JSON=[{"camera_id":"cam-001","rtsp_url":"0"},{"camera_id":"cam-002","rtsp_url":"0"}]
+```
+
+Then `python -m edge_ai` (two webcam indices only work if you have two cameras; otherwise use two RTSP URLs).
+
+### 4. PostgreSQL smoke test
+
+1. Start **Docker Desktop**.
+2. In `.env`, use PostgreSQL URL (comment out SQLite line).
+3. Run:
+
+```powershell
+docker compose up -d postgres
+python scripts/seed_phase1.py
+uvicorn backend_core.main:app --reload --port 8000
+```
+
+### 5. Jetson ops doc
+
+See **[JETSON_DEPLOY.md](./JETSON_DEPLOY.md)** — flash, deploy, RTSP, heartbeat monitoring.
+
+---
+
 ## Phase 1 acceptance checklist
 
-- [ ] `seed_phase1.py` creates brand + store + cameras + edge device
-- [ ] Heartbeat updates `edge_devices.last_heartbeat_at` in Postgres
-- [ ] Config API returns camera RTSP list for the store
-- [ ] Analytics APIs return data scoped to `brand_id`
+- [x] `seed_phase1.py` creates brand + store + cameras + edge device
+- [x] Heartbeat updates `edge_devices.last_heartbeat_at`
+- [x] Config API returns camera RTSP list for the store
+- [x] Analytics APIs return data scoped to `brand_id`
 - [ ] Two RTSP streams run without crashing (multi-camera mode)
-- [ ] JWT issued and accepted on `/api/v1/analytics/*`
+- [ ] JWT issued and accepted on `/api/v1/analytics/*` — run `verify_phase1_handoff.ps1`
 
 ## Next: Phase 2
 

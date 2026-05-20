@@ -1,7 +1,7 @@
 # Orzen Vision — edge + API (retail analytics core)
 
 Product brief: **`Orzen_Vision_Freelance_Brief.docx`**.  
-**Phase 1 (current):** **[docs/PHASE1.md](docs/PHASE1.md)** · Full roadmap: **[docs/ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md)**
+**Phase 1 (current):** **[docs/PHASE1_STATUS.md](docs/PHASE1_STATUS.md)** (done vs left) · **[docs/PHASE1.md](docs/PHASE1.md)** (how to run) · Full roadmap: **[docs/ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md)**
 
 This repo is the **edge inference + face recognition + tracking + FastAPI + PostgreSQL** foundation for Orzen Vision (jewellery retail). Phase 1 adds **multi-tenant SaaS**, **edge↔cloud auth/heartbeat**, and **multi-camera** RTSP. Dashboards, WhatsApp, HRMS/POS/CRM, and LLM are later phases.
 
