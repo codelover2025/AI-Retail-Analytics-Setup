@@ -33,11 +33,20 @@ if (-not $apiUp) {
 .\scripts\verify_phase1_handoff.ps1
 python scripts/verify_config_refresh.py
 python scripts/verify_multi_camera_config.py
+python scripts/verify_multi_camera_live.py
+python scripts/verify_deepstream_config.py
+python scripts/verify_admin_api.py
+python scripts/verify_edge_events.py
+
+# Start Redis if Docker available
+try {
+    docker compose up -d redis 2>$null
+    Start-Sleep -Seconds 2
+} catch {}
 python scripts/verify_redis_websocket.py
 
 Write-Host ""
 Write-Host "Optional (Docker):" -ForegroundColor Cyan
 Write-Host "  .\scripts\verify_postgres.ps1"
-Write-Host "Manual (hardware):" -ForegroundColor Cyan
-Write-Host "  Multi-camera live: MULTI_CAMERA_ENABLED=true in .env, python -m edge_ai"
-Write-Host '  Jetson: docs/JETSON_DEPLOY.md'
+Write-Host "Deploy docs:" -ForegroundColor Cyan
+Write-Host "  docs/DEPLOY_INDIA.md  |  docs/JETSON_DEPLOY.md"

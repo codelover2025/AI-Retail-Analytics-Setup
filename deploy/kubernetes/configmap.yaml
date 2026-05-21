@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orzen-config
+  namespace: orzen-vision
+data:
+  BRAND_SLUG: "orzen-demo"
+  STORE_ID: "store-001"
+  BACKEND_URL: "https://api.orzen.in"
+  REDIS_URL: "redis://redis:6379/0"
+  PIPELINE_BACKEND: "opencv"
+  REQUIRE_TLS: "true"
+  # India data residency: deploy this namespace to ap-south-1 (AWS Mumbai) or Azure Central India

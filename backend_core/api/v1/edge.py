@@ -8,7 +8,9 @@ from backend_core.schemas.edge import (
     EdgeHeartbeatRequest,
     EdgeHeartbeatResponse,
 )
+from backend_core.schemas.edge_events import EdgeEventsBatch, EdgeEventsBatchResponse
 from backend_core.services.edge_cloud import EdgeCloudService
+from backend_core.services.edge_events import EdgeEventsService
 from shared.config import get_settings
 from shared.database.session import get_db
 from shared.database.tenant_models import EdgeDevice, Store
@@ -46,5 +48,19 @@ def post_heartbeat(
     loaded = _load_device(db, device.id)
     svc = EdgeCloudService(db, get_settings())
     resp = svc.record_heartbeat(loaded, body, known_config_version=config_version)
+    db.commit()
+    return resp
+
+
+@router.post("/events", response_model=EdgeEventsBatchResponse)
+def post_edge_events(
+    body: EdgeEventsBatch,
+    device: EdgeDevice = Depends(get_edge_device),
+    db: Session = Depends(get_db),
+):
+    """Batch metadata upload from edge (alternative to direct DB writes)."""
+    loaded = _load_device(db, device.id)
+    svc = EdgeEventsService(db, get_settings(), loaded)
+    resp = svc.ingest_batch(body)
     db.commit()
     return resp

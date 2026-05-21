@@ -89,6 +89,19 @@ class EdgeCloudClient:
     def _headers(self) -> dict[str, str]:
         return {"X-Edge-Key": self.settings.edge_api_key or ""}
 
+    def post_events(self, payload: dict) -> bool:
+        if not self.settings.edge_api_key:
+            return False
+        url = f"{self.base_url}/api/v1/edge/events"
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                resp = client.post(url, json=payload, headers=self._headers())
+                resp.raise_for_status()
+                return True
+        except Exception as exc:
+            logger.warning("Event batch upload failed: %s", exc)
+            return False
+
     def _heartbeat_loop(self) -> None:
         interval = max(5, self.settings.heartbeat_interval_seconds)
         while not self._stop.wait(interval):

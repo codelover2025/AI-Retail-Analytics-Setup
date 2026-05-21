@@ -1,89 +1,62 @@
 # Orzen Vision — edge + API (retail analytics core)
 
-Product brief: **`Orzen_Vision_Freelance_Brief.docx`**.  
-**Phase 1 (current):** **[docs/PHASE1_STATUS.md](docs/PHASE1_STATUS.md)** (done vs left) · **[docs/PHASE1.md](docs/PHASE1.md)** (how to run) · Full roadmap: **[docs/ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md)**
+Product brief: **`Orzen_Vision_Freelance_Brief.docx`**
 
-This repo is the **edge inference + face recognition + tracking + FastAPI + PostgreSQL** foundation for Orzen Vision (jewellery retail). Phase 1 adds **multi-tenant SaaS**, **edge↔cloud auth/heartbeat**, and **multi-camera** RTSP. Dashboards, WhatsApp, HRMS/POS/CRM, and LLM are later phases.
+## Client delivery (Phase 1)
 
-Pipeline: **RTSP/webcam → InsightFace detect/embed → ByteTrack → cosine match → PostgreSQL → FastAPI**.
+| Document | Purpose |
+|----------|---------|
+| **[docs/CLIENT_DELIVERY_PHASE1.md](docs/CLIENT_DELIVERY_PHASE1.md)** | **What to deliver to Orzen + sign-off** |
+| [docs/CLIENT_DEMO_GUIDE.md](docs/CLIENT_DEMO_GUIDE.md) | 15-minute demo script |
+| [docs/API_REFERENCE_PHASE1.md](docs/API_REFERENCE_PHASE1.md) | API contract |
+| [DELIVERY_README.txt](DELIVERY_README.txt) | Quick pointer for zip handover |
+
+Internal: [docs/PHASE1_STATUS.md](docs/PHASE1_STATUS.md) · [docs/PHASE1.md](docs/PHASE1.md) · [docs/ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md)
+
+---
+
+Pipeline: **RTSP/webcam → InsightFace → ByteTrack → cosine match → DB → FastAPI → Dashboard**
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `edge_ai/` | RTSP ingestion, detection, ByteTrack, embeddings, recognition, VIP/repeat alerts |
-| `backend_core/` | FastAPI app, **strict** response schemas (`schemas/contract.py`), `services/` |
-<<<<<<< HEAD
-| `dashboard-ui/` | Next.js dashboard (Tailwind, Recharts, Axios) — see `dashboard-ui/README.md` |
-| `analytics-services/` | KPI/footfall/dwell/report processors for the dashboard |
-=======
->>>>>>> origin/main
-| `shared/` | Settings, SQLAlchemy models, repository (used by edge + API) |
+| `edge_ai/` | RTSP, detection, tracking, recognition, alerts |
+| `backend_core/` | FastAPI, auth, analytics + edge + admin APIs |
+| `dashboard-ui/` | Next.js dashboard — [dashboard-ui/README.md](dashboard-ui/README.md) |
+| `shared/` | Config, database models, repositories |
+| `deploy/` | Jetson + Kubernetes (India) |
+| `scripts/` | Setup, verify, demo |
 
-Python package names use underscores (`edge_ai`, `backend_core`); Docker Compose service names use hyphens (`edge-ai`, `backend-core`).
+## Run with frontend (recommended for demo)
 
-## API contract (requires `X-API-Key` when `API_KEY` is set)
-
-### `GET /api/live-visitors`
-
-```json
-{ "count": 3, "timestamp": "2026-05-19T12:00:00+00:00" }
+```powershell
+.\scripts\setup_local.ps1
+.\scripts\run_with_frontend.ps1
 ```
 
-`timestamp` is the latest `last_seen_at` among live rows (or “now” if none).
+- Dashboard: http://localhost:3000  
+- API: http://127.0.0.1:8000/docs  
 
-### `GET /api/recognitions`
+## Run API + edge only
 
-```json
-[
-  { "id": "uuid-string", "type": "vip", "time": "2026-05-19T12:00:00+00:00" }
-]
+```powershell
+pip install -r requirements.txt -r requirements-ml.txt
+.\scripts\setup_local.ps1
+uvicorn backend_core.main:app --host 127.0.0.1 --port 8000 --reload
+python -m edge_ai
 ```
 
-`type` is one of: `vip`, `new_visitor`, `repeat_visitor`, `visitor`.
+## API contract (dashboard)
 
-### `GET /api/footfall`
+| Endpoint | Response |
+|----------|----------|
+| `GET /api/live-visitors` | `{ count, timestamp }` |
+| `GET /api/recognitions` | `[{ id, type, time }]` |
+| `GET /api/footfall` | `{ daily, hourly }` |
+| `GET /api/alerts` | `[{ type, message, time }]` |
 
-```json
-{
-  "daily": [
-    { "day": "2026-05-19", "unique_visitors": 120, "total_detections": 450 }
-  ],
-  "hourly": [
-    { "bucket_start": "2026-05-19T12:00:00+00:00", "count": 42 }
-  ]
-}
-```
-
-Hourly buckets are `COUNT(*)` of **recognition** rows per UTC hour (last 168 buckets by default).
-
-### `GET /api/alerts`
-
-```json
-[
-  { "type": "vip_detected", "message": "VIP visitor detected: …", "time": "2026-05-19T12:00:00+00:00" }
-]
-```
-
-## Run locally
-
-1. PostgreSQL (or Docker Compose `postgres` only).
-2. Copy `.env.example` → `.env` and set `DATABASE_URL`, `RTSP_URL` (`0` = default webcam index).
-3. Install deps:
-
-```bash
-pip install -r requirements.txt
-pip install -r requirements-ml.txt
-```
-
-4. API: `uvicorn backend_core.main:app --reload --host 0.0.0.0 --port 8000`
-5. Edge: `python -m edge_ai` (or `docker compose up edge-ai`)
-<<<<<<< HEAD
-6. Dashboard: `cd dashboard-ui && npm install && npm run dev` → http://localhost:3000
-=======
->>>>>>> origin/main
-
-**CI / no GPU:** `python scripts/run_test_pipeline.py --frames 20` uses `MockFaceDetector` (no InsightFace).
+Details: [docs/API_REFERENCE_PHASE1.md](docs/API_REFERENCE_PHASE1.md)
 
 ## Docker
 
@@ -91,14 +64,7 @@ pip install -r requirements-ml.txt
 docker compose up --build
 ```
 
-- **backend-core**: `http://localhost:8000`
-- **edge-ai**: runs `python -m edge_ai` (same image includes InsightFace + ONNX Runtime).
+## Phase scope
 
-## Data stored
-
-- Visitor **embeddings** (JSONB), optional metadata; no full video.
-- Recognitions, live visitor rows (pruned after `MAX_LIVE_VISITOR_SECONDS`), daily footfall rollups, alerts.
-
-## WebSocket (optional)
-
-`GET /ws/live` — Redis pub/sub for alerts when `REDIS_URL` is set; otherwise heartbeat only.
+**Phase 1 (this delivery):** Architecture, edge pipeline, multi-tenant API, starter dashboard.  
+**Phases 2–5:** VIP/watchlist, zones, WhatsApp, full dashboard, LLM — see [ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md).

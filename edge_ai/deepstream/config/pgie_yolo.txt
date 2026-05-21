@@ -1,0 +1,8 @@
+[property]
+gpu-id=0
+model-engine-file=../../models/yolo_person.engine
+batch-size=4
+network-mode=0
+num-detected-classes=1
+gie-unique-id=1
+process-mode=1

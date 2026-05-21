@@ -6,21 +6,16 @@ python-dotenv>=1.0.0
 
 sqlalchemy>=2.0.36
 psycopg2-binary>=2.9.10
+alembic>=1.14.0
 
 # Vision (lightweight — works without InsightFace)
 opencv-python-headless>=4.10.0
 numpy>=1.26.0
 supervision>=0.25.0
 
-# Optional real-time pub/sub
+# Real-time pub/sub + WebSocket tests
 redis>=5.2.0
-<<<<<<< HEAD
 websockets>=13.0
-
-# Database migrations (Phase 1 scaffold)
-alembic>=1.14.0
-=======
->>>>>>> origin/main
 
 # Phase 1 — auth + edge-cloud HTTP
 httpx>=0.27.0

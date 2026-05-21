@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orzen-vision
+  labels:
+    app: orzen-vision
+    region: ap-south-1

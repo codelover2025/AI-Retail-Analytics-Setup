@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     frame_skip: int = 2
     det_size: int = 640
     max_live_visitor_seconds: int = 30
+    insightface_ctx_id: int = -1  # -1 CPU, 0+ GPU (CUDA)
+    edge_use_cloud_events: bool = False  # POST /api/v1/edge/events instead of direct DB
+
+    # TLS / production (document in DEPLOY_INDIA.md)
+    require_tls: bool = False
 
     # Auth
     api_key: Optional[str] = None

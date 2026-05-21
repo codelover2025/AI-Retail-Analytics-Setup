@@ -18,9 +18,12 @@ class DetectedFace:
 class FaceDetector:
     """InsightFace-based face detection and embedding extraction."""
 
-    def __init__(self, det_size: int = 640, ctx_id: int = 0):
+    def __init__(self, det_size: int = 640, ctx_id: int | None = None):
+        from shared.config import get_settings
+
+        settings = get_settings()
         self.det_size = det_size
-        self.ctx_id = ctx_id
+        self.ctx_id = ctx_id if ctx_id is not None else settings.insightface_ctx_id
         self._app = None
 
     def _ensure_model(self) -> None:
@@ -28,12 +31,33 @@ class FaceDetector:
             return
         from insightface.app import FaceAnalysis
 
-        self._app = FaceAnalysis(
-            name="buffalo_l",
-            allowed_modules=["detection", "recognition"],
-        )
+        kwargs: dict = {
+            "name": "buffalo_l",
+            "allowed_modules": ["detection", "recognition"],
+        }
+        providers = self._onnx_providers()
+        try:
+            if providers:
+                self._app = FaceAnalysis(providers=providers, **kwargs)
+            else:
+                self._app = FaceAnalysis(**kwargs)
+        except TypeError:
+            self._app = FaceAnalysis(**kwargs)
         self._app.prepare(ctx_id=self.ctx_id, det_size=(self.det_size, self.det_size))
-        logger.info("InsightFace model loaded (buffalo_l)")
+        device = "GPU" if self.ctx_id >= 0 else "CPU"
+        logger.info("InsightFace model loaded (buffalo_l, %s, ctx_id=%s)", device, self.ctx_id)
+
+    @staticmethod
+    def _onnx_providers() -> list[str] | None:
+        try:
+            import onnxruntime as ort
+
+            available = ort.get_available_providers()
+            if "CUDAExecutionProvider" in available:
+                return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        except Exception:
+            pass
+        return None
 
     def detect(self, frame: np.ndarray) -> list[DetectedFace]:
         self._ensure_model()

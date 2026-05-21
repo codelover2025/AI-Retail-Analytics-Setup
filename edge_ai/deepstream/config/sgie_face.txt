@@ -1,0 +1,11 @@
+# Phase 1 SGIE template — face embedding model path set on Jetson in Phase 2
+[property]
+gpu-id=0
+model-engine-file=../../models/face_sgie.engine
+batch-size=4
+network-mode=2
+process-mode=2
+gie-unique-id=2
+operate-on-gie-id=1
+operate-on-class-ids=0
+output-tensor-meta=1

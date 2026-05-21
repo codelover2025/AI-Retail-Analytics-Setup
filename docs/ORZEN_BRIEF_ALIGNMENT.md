@@ -2,6 +2,8 @@
 
 Source: `Orzen_Vision_Freelance_Brief.docx` (jewellery retail AI camera analytics).
 
+**Phase 1 progress:** [PHASE1_STATUS.md](./PHASE1_STATUS.md) (commercial deliverable ~92% · full brief ~25%).
+
 This repo implements the **edge inference + recognition + tracking + backend APIs + PostgreSQL** slice. Dashboard, WhatsApp, HRMS/POS/CRM, and LLM layers are **out of scope here** but listed below for integration points.
 
 ---
@@ -16,7 +18,7 @@ This repo implements the **edge inference + recognition + tracking + backend API
 | **Customer profile on arrival** | Partial | `Visitor` + recognitions; no CRM fields (categories, LTV, notes) yet |
 | **Consent (enrol, opt-out, audit)** | Not started | DPDP: `ConsentRecord` + retention job; embeddings-only already aligned |
 | **Indian demographics tuning** | Partial | InsightFace `buffalo_l`; brief asks fine-tune — production may need custom model |
-| **Multi-store chain memory** | Partial | `store_id` on events; needs **`brand_id`** + cross-store embedding lookup |
+| **Multi-store chain memory** | Partial | `brand_id` + tenant tables done; cross-store embedding match in Phase 2 |
 | **Real-time walk-in count** | Done | `GET /api/live-visitors` |
 | **Demographics (anonymous aggregate)** | Not started | Age/gender model + aggregate tables (no PII) |
 | **Journey / zones / dwell** | Not started | Zone config + person tracking + timestamps per zone |
@@ -25,12 +27,12 @@ This repo implements the **edge inference + recognition + tracking + backend API
 | **HRMS staff tracking** | Not started | External HRMS → employee registry + presence API |
 | **Staff–customer ratio / coverage** | Not started | Depends on zones + employee tracks |
 | **WhatsApp alerts** | Not started | Backend webhook/worker consuming `alerts` + Gupshup/AiSensy |
-| **Dashboards** | Out of scope | Consumes strict `/api/*` contract |
+| **Dashboards** | Partial | `dashboard-ui/` starter (Phase 1); full brief UX in Phase 4 |
 | **LLM reasoning** | Out of scope | Orzen-provided model; query API over analytics DB |
 | **HRMS / POS / CRM / ERP** | Not started | OpenAPI + sync jobs; VIP/watchlist from CRM |
 | **Predictive (footfall, VIP)** | Not started | Batch jobs on `footfall_daily` + calendar features |
 | **Edge-first, metadata only** | Done | RTSP on edge; embeddings + metadata to Postgres; no video upload |
-| **Multi-tenant SaaS** | Not started | `brand_id` + row-level isolation + India region deploy |
+| **Multi-tenant SaaS** | Partial (Phase 1) | `brand_id` + brands/stores/cameras/edge_devices; India cloud deploy TBD |
 | **DPDP (retention, deletion, audit)** | Partial | Embeddings-only; need retention policy + audit log tables |
 
 ---
