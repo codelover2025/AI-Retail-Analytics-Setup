@@ -7,9 +7,9 @@ import {
   Bell,
   LayoutDashboard,
   Users,
-  Store,
 } from "lucide-react";
 import clsx from "clsx";
+import { OrzenLogo } from "@/components/OrzenLogo";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -23,10 +23,9 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
-        <div className="flex h-14 items-center gap-2 border-b border-slate-200 px-4">
-          <Store className="h-6 w-6 text-brand-600" />
-          <span className="font-semibold text-slate-900">Orzen Vision</span>
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+        <div className="flex min-h-[4.5rem] items-center border-b border-slate-200 px-4 py-3">
+          <OrzenLogo variant="primary" priority />
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="Main">
           {nav.map(({ href, label, icon: Icon }) => {
@@ -43,20 +42,25 @@ export function Sidebar() {
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden />
                 {label}
               </Link>
             );
           })}
         </nav>
         <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-400">
-          Retail analytics
+          Orzen Vision · Store analytics
         </p>
       </aside>
+
+      <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center justify-center border-b border-slate-200 bg-white px-4 md:hidden">
+        <OrzenLogo variant="primary" className="max-h-8" priority />
+      </header>
 
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200 bg-white md:hidden"
         aria-label="Mobile"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {nav.map(({ href, label, icon: Icon }) => {
           const active =

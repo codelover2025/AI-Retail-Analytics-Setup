@@ -7,6 +7,10 @@ Start here:
   docs/CLIENT_DEMO_GUIDE.md        15-minute live demo script
   docs/API_REFERENCE_PHASE1.md     API contract for integrators
 
+How to run (full guide):
+
+  docs/HOW_TO_RUN.md
+
 Quick start (developer):
 
   1. Copy .env.example to .env

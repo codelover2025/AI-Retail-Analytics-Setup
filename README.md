@@ -2,10 +2,24 @@
 
 Product brief: **`Orzen_Vision_Freelance_Brief.docx`**
 
+## How to run
+
+**[docs/HOW_TO_RUN.md](docs/HOW_TO_RUN.md)** — full setup & run guide (API + dashboard + edge).
+
+Quick start:
+
+```powershell
+.\scripts\setup_local.ps1
+.\scripts\run_with_frontend.ps1
+```
+
+Open http://localhost:3000 (dashboard) · http://127.0.0.1:8000/docs (API)
+
 ## Client delivery (Phase 1)
 
 | Document | Purpose |
 |----------|---------|
+| **[docs/HOW_TO_RUN.md](docs/HOW_TO_RUN.md)** | **How to run everything** |
 | **[docs/CLIENT_DELIVERY_PHASE1.md](docs/CLIENT_DELIVERY_PHASE1.md)** | **What to deliver to Orzen + sign-off** |
 | [docs/CLIENT_DEMO_GUIDE.md](docs/CLIENT_DEMO_GUIDE.md) | 15-minute demo script |
 | [docs/API_REFERENCE_PHASE1.md](docs/API_REFERENCE_PHASE1.md) | API contract |

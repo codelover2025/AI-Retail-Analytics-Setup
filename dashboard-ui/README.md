@@ -37,6 +37,15 @@ If the page stays blank: stop all `npm run dev` windows, delete `dashboard-ui/.n
 - `GET /api/footfall`
 - `GET /api/alerts`
 
+## Branding
+
+Official logos are copied from `../Orzen Logo/` into `public/branding/`:
+
+- `orzen-logo-primary.png` — sidebar & mobile header (Standard Black)
+- `orzen-icon.png` — favicon / app icon (Brand Mark)
+
+Component: `components/OrzenLogo.tsx`
+
 ## Structure
 
 | Path | Role |

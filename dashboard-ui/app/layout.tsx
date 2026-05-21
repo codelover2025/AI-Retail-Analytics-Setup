@@ -5,6 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Orzen Vision — Store Analytics",
   description: "Retail AI analytics dashboard",
+  icons: {
+    icon: "/branding/orzen-icon.png",
+    apple: "/branding/orzen-icon.png",
+  },
 };
 
 export default function RootLayout({
