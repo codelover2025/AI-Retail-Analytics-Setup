@@ -1,0 +1,24 @@
+# Core API + database (install this first)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic-settings>=2.6.0
+python-dotenv>=1.0.0
+
+sqlalchemy>=2.0.36
+psycopg2-binary>=2.9.10
+
+# Vision (lightweight — works without InsightFace)
+opencv-python-headless>=4.10.0
+numpy>=1.26.0
+supervision>=0.25.0
+
+# Optional real-time pub/sub
+redis>=5.2.0
+websockets>=13.0
+
+# Database migrations (Phase 1 scaffold)
+alembic>=1.14.0
+
+# Phase 1 — auth + edge-cloud HTTP
+httpx>=0.27.0
+python-jose[cryptography]>=3.3.0
