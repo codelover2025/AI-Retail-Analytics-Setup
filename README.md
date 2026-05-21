@@ -13,8 +13,11 @@ Pipeline: **RTSP/webcam → InsightFace detect/embed → ByteTrack → cosine ma
 |------|------|
 | `edge_ai/` | RTSP ingestion, detection, ByteTrack, embeddings, recognition, VIP/repeat alerts |
 | `backend_core/` | FastAPI app, **strict** response schemas (`schemas/contract.py`), `services/` |
+<<<<<<< HEAD
 | `dashboard-ui/` | Next.js dashboard (Tailwind, Recharts, Axios) — see `dashboard-ui/README.md` |
 | `analytics-services/` | KPI/footfall/dwell/report processors for the dashboard |
+=======
+>>>>>>> origin/main
 | `shared/` | Settings, SQLAlchemy models, repository (used by edge + API) |
 
 Python package names use underscores (`edge_ai`, `backend_core`); Docker Compose service names use hyphens (`edge-ai`, `backend-core`).
@@ -75,7 +78,10 @@ pip install -r requirements-ml.txt
 
 4. API: `uvicorn backend_core.main:app --reload --host 0.0.0.0 --port 8000`
 5. Edge: `python -m edge_ai` (or `docker compose up edge-ai`)
+<<<<<<< HEAD
 6. Dashboard: `cd dashboard-ui && npm install && npm run dev` → http://localhost:3000
+=======
+>>>>>>> origin/main
 
 **CI / no GPU:** `python scripts/run_test_pipeline.py --frames 20` uses `MockFaceDetector` (no InsightFace).
 

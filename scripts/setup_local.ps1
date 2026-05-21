@@ -12,8 +12,11 @@ if (-not (Test-Path .env)) {
 New-Item -ItemType Directory -Force -Path data | Out-Null
 python scripts/seed_phase1.py
 python scripts/merge_footfall_daily.py
+<<<<<<< HEAD
 python scripts/rotate_edge_key.py
 python scripts/seed_sample_alerts.py
+=======
+>>>>>>> origin/main
 Write-Host ""
 Write-Host "Next:"
 Write-Host "  uvicorn backend_core.main:app --reload --port 8000"

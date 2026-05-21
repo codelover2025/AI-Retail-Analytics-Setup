@@ -12,6 +12,7 @@ dist/
 build/
 .insightface/
 *.onnx
+<<<<<<< HEAD
 
 # Next.js dashboard
 dashboard-ui/node_modules/
@@ -22,3 +23,5 @@ dashboard-ui/out/
 .idea/
 .vscode/
 *.log
+=======
+>>>>>>> origin/main
