@@ -24,6 +24,13 @@ def _utcnow() -> datetime:
 
 
 def _recognition_type(rec: Recognition, visitor: Visitor) -> RecognitionType:
+    if rec.identity_type:
+        it = rec.identity_type
+        if it in ("employee", "new_visitor", "repeat_visitor", "visitor"):
+            return it  # type: ignore[return-value]
+    meta = visitor.metadata_ or {}
+    if meta.get("person_kind") == "employee":
+        return "employee"
     if visitor.is_vip:
         return "vip"
     if rec.is_new_visitor:

@@ -27,6 +27,11 @@ Open http://localhost:3000 (dashboard) · http://127.0.0.1:8000/docs (API)
 
 Internal: [docs/PHASE1_STATUS.md](docs/PHASE1_STATUS.md) · [docs/PHASE1.md](docs/PHASE1.md) · [docs/ORZEN_BRIEF_ALIGNMENT.md](docs/ORZEN_BRIEF_ALIGNMENT.md)
 
+## Phase 2 (next)
+
+**[docs/PHASE2.md](docs/PHASE2.md)** — reduced scope: recognition, repeat visitor, customer/employee identity.  
+Tracker: [docs/PHASE2_STATUS.md](docs/PHASE2_STATUS.md)
+
 ---
 
 Pipeline: **RTSP/webcam → InsightFace → ByteTrack → cosine match → DB → FastAPI → Dashboard**

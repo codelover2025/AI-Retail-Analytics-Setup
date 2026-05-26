@@ -9,7 +9,8 @@ from edge_ai.alert_engine.events import AlertEngine
 from edge_ai.camera_ingestion.camera_config import load_camera_sources
 from edge_ai.camera_ingestion.rtsp_stream import RTSPStream
 from edge_ai.cloud_client import EdgeCloudClient
-from edge_ai.detection.face_detector import FaceDetector
+from edge_ai.pipeline.face_processor import FaceProcessor
+from edge_ai.pipeline.identity_service import IdentityService
 from edge_ai.recognition.face_matcher import FaceMatcher
 from edge_ai.tracking.byte_tracker import FaceTracker
 from shared.config import get_settings
@@ -39,8 +40,11 @@ class RetailAnalyticsPipeline:
             else self.settings.frame_skip
         )
         self.stream = RTSPStream(self.source)
-        self.detector = FaceDetector(det_size=self.settings.det_size)
+        self.face_processor = FaceProcessor.from_settings(self.settings)
         self.tracker = FaceTracker()
+        self._shared_matcher = None
+        self._track_person: dict[int, int] = {}
+        self._track_visitor_uuid: dict = {}
         self._detector_lock: Optional[threading.Lock] = None
         self._running = False
         self._processed_tracks: set[int] = set()
@@ -109,8 +113,8 @@ class RetailAnalyticsPipeline:
     def _detect(self, frame):
         if self._detector_lock:
             with self._detector_lock:
-                return self.detector.detect(frame)
-        return self.detector.detect(frame)
+                return self.face_processor.process_frame(frame)
+        return self.face_processor.process_frame(frame)
 
     def _process_frame(self, frame) -> None:
         detections = self._detect(frame)
@@ -120,14 +124,38 @@ class RetailAnalyticsPipeline:
         try:
             brand_id = self._brand_id or resolve_brand_id(db, self.settings)
             repo = AnalyticsRepository(db, self.settings, brand_id)
+            refresh_gallery = self._shared_matcher is None
+            identity = IdentityService(
+                db,
+                self.settings,
+                brand_id,
+                matcher=self._shared_matcher,
+                refresh_gallery=refresh_gallery,
+                track_person=self._track_person,
+                track_visitor_uuid=self._track_visitor_uuid,
+            )
+            self._shared_matcher = identity.matcher
             matcher = FaceMatcher(db, self.settings, brand_id)
+            matcher._service = identity
             alerts = AlertEngine(db, self.settings, brand_id)
 
             for face in tracked:
                 bbox = face.bbox.tolist()
-                match = matcher.identify(face.track_id, face.embedding)
+                match = matcher.identify(
+                    face.track_id,
+                    face.embedding,
+                    camera_id=self.camera_id,
+                    detection_score=face.score,
+                )
+                if match.identity:
+                    logger.debug(
+                        "identity %s",
+                        match.identity.to_dict(),
+                    )
 
                 if face.track_id not in self._visit_recorded_for_track:
+                    event = match.identity
+                    is_employee = event is not None and event.type == "employee"
                     repo.record_visit(
                         match.visitor,
                         store_id=self.settings.store_id,
@@ -136,6 +164,10 @@ class RetailAnalyticsPipeline:
                         confidence=match.confidence if not match.is_new else face.score,
                         is_new_visitor=match.is_new,
                         bbox=bbox,
+                        match_score=event.match_score if event else None,
+                        identity_type=event.type if event else None,
+                        count_footfall=not is_employee,
+                        increment_visit=not is_employee,
                     )
                     self._visit_recorded_for_track.add(face.track_id)
 

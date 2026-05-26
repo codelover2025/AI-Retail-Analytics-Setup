@@ -82,8 +82,13 @@ class AnalyticsRepository:
         confidence: float,
         is_new_visitor: bool,
         bbox: list[float],
+        match_score: Optional[float] = None,
+        identity_type: Optional[str] = None,
+        count_footfall: bool = True,
+        increment_visit: bool = True,
     ) -> Recognition:
-        visitor.visit_count += 1
+        if increment_visit:
+            visitor.visit_count += 1
         visitor.last_seen_at = _utcnow()
         recognition = Recognition(
             brand_id=self.brand_id,
@@ -92,12 +97,15 @@ class AnalyticsRepository:
             visitor_id=visitor.id,
             track_id=track_id,
             confidence=confidence,
+            match_score=match_score,
+            identity_type=identity_type,
             is_new_visitor=is_new_visitor,
             bbox=bbox,
             recognized_at=_utcnow(),
         )
         self.db.add(recognition)
-        self._increment_footfall(store_id)
+        if count_footfall:
+            self._increment_footfall(store_id)
         return recognition
 
     def _get_or_create_footfall_row(self, store_id: str, day: date) -> FootfallDaily:

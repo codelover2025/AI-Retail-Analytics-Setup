@@ -11,7 +11,9 @@ class LiveVisitorsResponse(BaseModel):
     timestamp: datetime
 
 
-RecognitionType = Literal["vip", "new_visitor", "repeat_visitor", "visitor"]
+RecognitionType = Literal[
+    "vip", "new_visitor", "repeat_visitor", "visitor", "employee"
+]
 
 
 class RecognitionItem(BaseModel):

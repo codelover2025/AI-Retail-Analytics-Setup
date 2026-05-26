@@ -38,8 +38,10 @@ class Settings(BaseSettings):
     multi_camera_enabled: bool = False
     max_camera_workers: int = 4
 
-    # Recognition thresholds
-    recognition_threshold: float = 0.45
+    # Recognition thresholds (cosine similarity; recommended 0.5–0.6)
+    recognition_threshold: float = 0.55
+    min_face_score: float = 0.6
+    min_bbox_area: float = 1600.0  # min width*height (pixels²) for face bbox
     vip_visit_threshold: int = 10
     repeat_visit_window_hours: int = 24
 

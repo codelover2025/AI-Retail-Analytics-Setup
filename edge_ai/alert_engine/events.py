@@ -46,6 +46,9 @@ class AlertEngine:
     ) -> list[PipelineEvent]:
         events: list[PipelineEvent] = []
         visitor = match.visitor
+        meta = visitor.metadata_ or {}
+        if meta.get("person_kind") == "employee":
+            return events
 
         if visitor.is_vip:
             events.append(

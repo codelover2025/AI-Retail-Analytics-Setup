@@ -60,6 +60,8 @@ class Recognition(Base):
     )
     track_id: Mapped[int] = mapped_column(Integer, index=True)
     confidence: Mapped[float] = mapped_column(Float)
+    match_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    identity_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     is_new_visitor: Mapped[bool] = mapped_column(Boolean, default=False)
     bbox: Mapped[Optional[list[float]]] = mapped_column(JSONCol)
     recognized_at: Mapped[datetime] = mapped_column(

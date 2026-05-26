@@ -35,11 +35,11 @@ class MultiCameraOrchestrator:
         self._cloud.start_heartbeat_loop()
         self._running = True
 
-        shared_detector = None
+        shared_processor = None
         if len(self.cameras) > 1:
-            from edge_ai.detection.face_detector import FaceDetector
+            from edge_ai.pipeline.face_processor import FaceProcessor
 
-            shared_detector = FaceDetector(det_size=self.settings.det_size)
+            shared_processor = FaceProcessor.from_settings(self.settings)
 
         for cam in self.cameras:
             pipeline = RetailAnalyticsPipeline(
@@ -47,8 +47,8 @@ class MultiCameraOrchestrator:
                 camera_id=cam.camera_id,
                 frame_skip_override=cam.frame_skip,
             )
-            if shared_detector is not None:
-                pipeline.detector = shared_detector
+            if shared_processor is not None:
+                pipeline.face_processor = shared_processor
                 pipeline._detector_lock = self._detector_lock
             self._pipelines.append(pipeline)
 

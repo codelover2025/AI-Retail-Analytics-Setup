@@ -43,6 +43,9 @@ def is_sqlite() -> bool:
 def init_db() -> None:
     try:
         Base.metadata.create_all(bind=engine)
+        from shared.database.migrations import ensure_recognition_phase2_columns
+
+        ensure_recognition_phase2_columns()
         if is_sqlite():
             # quick connectivity check
             with engine.connect() as conn:

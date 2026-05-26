@@ -5,10 +5,10 @@ from typing import Optional
 import numpy as np
 from sqlalchemy.orm import Session
 
-from edge_ai.embeddings.face_embedder import FaceEmbedder
+from edge_ai.pipeline.identity_service import IdentityService
+from edge_ai.pipeline.types import IdentityEvent
 from shared.config import Settings
 from shared.database.models import Visitor
-from shared.database.repository import AnalyticsRepository
 
 
 @dataclass
@@ -16,40 +16,46 @@ class MatchResult:
     visitor: Visitor
     confidence: float
     is_new: bool
+    identity: Optional[IdentityEvent] = None
 
 
 class FaceMatcher:
-    """Cosine-similarity face recognition against stored visitor embeddings."""
+    """
+    Backward-compatible wrapper around :class:`IdentityService`.
+    Prefer ``IdentityService`` for new code.
+    """
 
-    def __init__(self, db: Session, settings: Settings, brand_id):
-        self.repo = AnalyticsRepository(db, settings, brand_id)
-        self.settings = settings
-        self._track_visitor: dict[int, uuid.UUID] = {}
+    def __init__(self, db: Session, settings: Settings, brand_id: uuid.UUID):
+        self._service = IdentityService(db, settings, brand_id)
 
     def identify(
         self,
         track_id: int,
         embedding: np.ndarray,
+        *,
+        camera_id: Optional[str] = None,
+        detection_score: float = 0.0,
     ) -> MatchResult:
-        if track_id in self._track_visitor:
-            visitor = self.repo.db.get(Visitor, self._track_visitor[track_id])
-            if visitor:
-                return MatchResult(visitor=visitor, confidence=1.0, is_new=False)
-
-        normed = FaceEmbedder.from_detection(embedding)
-        match, score = self.repo.find_best_match(normed)
-
-        if match is not None:
-            self._track_visitor[track_id] = match.id
-            return MatchResult(visitor=match, confidence=score, is_new=False)
-
-        visitor = self.repo.register_visitor(
-            embedding=FaceEmbedder.to_list(normed),
-            display_name=f"Visitor-{str(uuid.uuid4())[:8]}",
+        event = self._service.resolve(
+            track_id,
+            embedding,
+            camera_id=camera_id or self._service.settings.camera_id,
+            detection_score=detection_score,
         )
-        self.repo.increment_unique_footfall(self.settings.store_id)
-        self._track_visitor[track_id] = visitor.id
-        return MatchResult(visitor=visitor, confidence=score, is_new=True)
+        visitor = self._service.store.get_visitor(event.visitor_id)
+        if visitor is None:
+            raise RuntimeError(f"Visitor missing after identity resolve: {event.visitor_id}")
+        return MatchResult(
+            visitor=visitor,
+            confidence=event.match_score if not event.is_new_person else detection_score,
+            is_new=event.is_new_person,
+            identity=event,
+        )
+
+    def should_count_unique_footfall(self, result: MatchResult) -> bool:
+        if result.identity is None:
+            return result.is_new
+        return self._service.should_count_unique_footfall(result.identity)
 
     def clear_track(self, track_id: int) -> None:
-        self._track_visitor.pop(track_id, None)
+        self._service.clear_track(track_id)
