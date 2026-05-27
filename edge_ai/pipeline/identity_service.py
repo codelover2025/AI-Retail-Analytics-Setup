@@ -63,6 +63,8 @@ class IdentityService:
         self.matcher = matcher or CosineMatcher(
             threshold=threshold,
             cache_recent=True,
+            use_faiss=settings.use_faiss,
+            faiss_min_gallery_size=settings.faiss_min_gallery_size,
         )
         if refresh_gallery:
             self.refresh_gallery()

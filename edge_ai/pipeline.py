@@ -11,6 +11,7 @@ from edge_ai.camera_ingestion.rtsp_stream import RTSPStream
 from edge_ai.cloud_client import EdgeCloudClient
 from edge_ai.pipeline.face_processor import FaceProcessor
 from edge_ai.pipeline.identity_service import IdentityService
+from edge_ai.pipeline.track_embedding_buffer import TrackEmbeddingAccumulator
 from edge_ai.recognition.face_matcher import FaceMatcher
 from edge_ai.tracking.byte_tracker import FaceTracker
 from shared.config import get_settings
@@ -49,6 +50,10 @@ class RetailAnalyticsPipeline:
         self._running = False
         self._processed_tracks: set[int] = set()
         self._visit_recorded_for_track: set[int] = set()
+        self._track_embeds = TrackEmbeddingAccumulator(
+            min_frames=self.settings.track_embed_min_frames,
+            max_frames=self.settings.track_embed_max_frames,
+        )
         self._brand_id = None
         self._cloud = EdgeCloudClient(self.settings)
         self._frames_processed = 0
@@ -139,11 +144,18 @@ class RetailAnalyticsPipeline:
             matcher._service = identity
             alerts = AlertEngine(db, self.settings, brand_id)
 
+            active_tracks = {face.track_id for face in tracked}
             for face in tracked:
                 bbox = face.bbox.tolist()
+                embed_for_match, stable = self._track_embeds.update(
+                    face.track_id, face.embedding
+                )
+                if not stable and face.track_id not in self._visit_recorded_for_track:
+                    continue
+
                 match = matcher.identify(
                     face.track_id,
-                    face.embedding,
+                    embed_for_match,
                     camera_id=self.camera_id,
                     detection_score=face.score,
                 )
@@ -187,6 +199,11 @@ class RetailAnalyticsPipeline:
                         confidence=face.score,
                     )
                     self._processed_tracks.add(face.track_id)
+
+            self._track_embeds.prune_inactive(active_tracks)
+            for tid in list(identity._track_person):
+                if tid not in active_tracks:
+                    identity.clear_track(tid)
 
             repo.prune_stale_live_visitors(
                 self.settings.store_id,

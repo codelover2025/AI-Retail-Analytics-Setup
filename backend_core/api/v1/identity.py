@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from backend_core.schemas.identity import (
     CustomerUpdateIn,
     EmployeeCreateIn,
     EmployeeOut,
+    EmployeeUpdateIn,
     IdentityStatsOut,
     RecognitionOut,
 )
@@ -171,6 +172,58 @@ def v1_create_employee(
     db: Session = Depends(get_db),
 ):
     return IdentityEmployeeService(db).create_employee(payload)
+
+
+@router.post("/employees/upload", response_model=EmployeeOut)
+async def v1_create_employee_from_photos(
+    name: str = Form(...),
+    employee_id: str | None = Form(default=None),
+    photos: list[UploadFile] = File(...),
+    _: None = Depends(verify_dashboard_api_key),
+    db: Session = Depends(get_db),
+):
+    if not photos:
+        raise HTTPException(status_code=400, detail="At least one photo required")
+    files = [await p.read() for p in photos]
+    eid = uuid.UUID(employee_id) if employee_id else None
+    return IdentityEmployeeService(db).create_employee_from_images(
+        name=name, files=files, employee_id=eid
+    )
+
+
+@router.get("/employees/{employee_id}", response_model=EmployeeOut)
+def v1_get_employee(
+    employee_id: str,
+    _: None = Depends(verify_dashboard_api_key),
+    db: Session = Depends(get_db),
+):
+    emp = IdentityEmployeeService(db).get_employee(uuid.UUID(employee_id))
+    return IdentityEmployeeService._to_out(emp)
+
+
+@router.patch("/employees/{employee_id}", response_model=EmployeeOut)
+def v1_update_employee(
+    employee_id: str,
+    payload: EmployeeUpdateIn,
+    _: None = Depends(verify_dashboard_api_key),
+    db: Session = Depends(get_db),
+):
+    return IdentityEmployeeService(db).update_employee(uuid.UUID(employee_id), payload)
+
+
+@router.post("/employees/{employee_id}/re-enroll", response_model=EmployeeOut)
+async def v1_re_enroll_employee(
+    employee_id: str,
+    photos: list[UploadFile] = File(...),
+    _: None = Depends(verify_dashboard_api_key),
+    db: Session = Depends(get_db),
+):
+    if not photos:
+        raise HTTPException(status_code=400, detail="At least one photo required")
+    files = [await p.read() for p in photos]
+    return IdentityEmployeeService(db).re_enroll_from_images(
+        uuid.UUID(employee_id), files
+    )
 
 
 @router.get("/stats", response_model=IdentityStatsOut)

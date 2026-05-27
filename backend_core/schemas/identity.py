@@ -66,19 +66,22 @@ class RepeatVisitorOut(BaseModel):
 class EmployeeOut(BaseModel):
     id: str
     name: str
+    active: bool = True
     created_at: datetime
+    updated_at: datetime | None = None
 
 
 class EmployeeCreateIn(BaseModel):
-    """Create or update an employee profile.
-
-    Notes:
-    - This layer does NOT generate embeddings; it only stores provided embeddings.
-    """
+    """Create or update an employee profile (JSON embedding)."""
 
     id: str | None = None
     name: str
     embedding: list[float]
+
+
+class EmployeeUpdateIn(BaseModel):
+    name: str | None = None
+    active: bool | None = None
 
 
 class RecognitionIngest(BaseModel):

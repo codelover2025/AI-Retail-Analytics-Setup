@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     vip_visit_threshold: int = 10
     repeat_visit_window_hours: int = 24
 
+    # Phase 2 — multi-frame match + FAISS gallery
+    track_embed_min_frames: int = 3
+    track_embed_max_frames: int = 8
+    use_faiss: bool = True
+    faiss_min_gallery_size: int = 50
+    enrollment_min_frames: int = 3
+    enrollment_frame_similarity: float = 0.6
+
     # Pipeline tuning
     frame_skip: int = 2
     det_size: int = 640

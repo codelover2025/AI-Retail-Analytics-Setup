@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -9,6 +10,8 @@ import numpy as np
 
 from edge_ai.embeddings.face_embedder import normalize_embedding
 from edge_ai.pipeline.types import EMBEDDING_DIM
+
+logger = logging.getLogger(__name__)
 
 PersonKind = Literal["customer", "employee"]
 
@@ -32,7 +35,7 @@ class MatchHit:
 class CosineMatcher:
     """
     Production matcher: cosine similarity on L2-normalized 512-d vectors.
-    Threshold typically 0.5–0.6 (configurable).
+    Uses FAISS when enabled and gallery is large enough; linear scan otherwise.
     """
 
     def __init__(
@@ -40,17 +43,41 @@ class CosineMatcher:
         threshold: float = 0.55,
         *,
         cache_recent: bool = True,
+        use_faiss: bool = True,
+        faiss_min_gallery_size: int = 50,
     ):
         self.threshold = threshold
         self.cache_recent = cache_recent
+        self.use_faiss = use_faiss
+        self.faiss_min_gallery_size = faiss_min_gallery_size
         self._customer_gallery: list[GalleryEntry] = []
         self._employee_gallery: list[GalleryEntry] = []
         self._recent_cache: dict[int, np.ndarray] = {}
+        self._faiss = None
+        self._faiss_ok = False
+        if use_faiss:
+            try:
+                from edge_ai.pipeline.faiss_index import FaissGalleryIndex, faiss_available
+
+                if faiss_available():
+                    self._faiss = FaissGalleryIndex()
+                    self._faiss_ok = True
+                else:
+                    logger.info("faiss not installed; using linear gallery scan")
+            except Exception as exc:
+                logger.warning("FAISS init failed: %s", exc)
 
     def load_gallery(self, entries: list[GalleryEntry]) -> None:
         self._customer_gallery = [e for e in entries if e.person_kind == "customer"]
         self._employee_gallery = [e for e in entries if e.person_kind == "employee"]
         self._recent_cache.clear()
+        if self._faiss_ok and self._faiss is not None:
+            total = len(self._customer_gallery) + len(self._employee_gallery)
+            if total >= self.faiss_min_gallery_size:
+                self._faiss.rebuild(entries)
+                logger.debug("FAISS gallery index built (%d entries)", total)
+            else:
+                self._faiss._built = False
 
     def add_entry(self, entry: GalleryEntry) -> None:
         if entry.person_kind == "employee":
@@ -59,6 +86,10 @@ class CosineMatcher:
             self._customer_gallery.append(entry)
         if self.cache_recent:
             self._recent_cache[entry.person_id] = entry.embedding.copy()
+        if self._faiss_ok and self._faiss is not None:
+            all_entries = self._customer_gallery + self._employee_gallery
+            if len(all_entries) >= self.faiss_min_gallery_size:
+                self._faiss.rebuild(all_entries)
 
     @staticmethod
     def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -81,6 +112,31 @@ class CosineMatcher:
             if hit is not None:
                 return hit
 
+        total = len(self._customer_gallery) + len(self._employee_gallery)
+        if (
+            self._faiss_ok
+            and self._faiss is not None
+            and self._faiss._built
+            and total >= self.faiss_min_gallery_size
+        ):
+            hit = self._faiss.search(
+                emb, kinds=kinds, threshold=self.threshold, top_k=3
+            )
+            if hit is not None:
+                if self.cache_recent:
+                    self._recent_cache[hit.person_id] = emb
+                return hit
+
+        best = self._match_linear(emb, kinds)
+        if best and self.cache_recent:
+            self._recent_cache[best.person_id] = emb
+        return best
+
+    def _match_linear(
+        self,
+        emb: np.ndarray,
+        kinds: tuple[PersonKind, ...],
+    ) -> Optional[MatchHit]:
         best: Optional[MatchHit] = None
         galleries: list[tuple[PersonKind, list[GalleryEntry]]] = []
         if "employee" in kinds:
@@ -100,10 +156,6 @@ class CosineMatcher:
                         person_kind=kind,
                         visitor_id=entry.visitor_id,
                     )
-
-        if best and self.cache_recent:
-            self._recent_cache[best.person_id] = emb
-
         return best
 
     def match_employee(self, embedding: np.ndarray) -> Optional[MatchHit]:

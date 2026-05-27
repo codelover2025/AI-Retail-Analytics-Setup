@@ -1,32 +1,40 @@
 import uuid
+from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend_core.models.identity import Employee
-from backend_core.schemas.identity import EmployeeCreateIn, EmployeeOut
+from backend_core.schemas.identity import EmployeeCreateIn, EmployeeOut, EmployeeUpdateIn
+from shared.config import Settings, get_settings
+from shared.face_enrollment import embedding_from_upload
+from shared.identity.visitor_sync import upsert_employee_visitor
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class IdentityEmployeeService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, settings: Settings | None = None):
         self.db = db
+        self.settings = settings or get_settings()
 
-    def list_employees(self, limit: int = 200) -> list[EmployeeOut]:
-        rows = (
-            self.db.execute(
-                select(Employee).order_by(Employee.created_at.desc()).limit(limit)
-            )
-            .scalars()
-            .all()
-        )
-        return [
-            EmployeeOut(
-                id=str(e.id),
-                name=e.name,
-                created_at=e.created_at,
-            )
-            for e in rows
-        ]
+    def list_employees(
+        self, limit: int = 200, *, active_only: bool = True
+    ) -> list[EmployeeOut]:
+        stmt = select(Employee).order_by(Employee.created_at.desc()).limit(limit)
+        if active_only:
+            stmt = stmt.where(Employee.active.is_(True))
+        rows = self.db.execute(stmt).scalars().all()
+        return [self._to_out(e) for e in rows]
+
+    def get_employee(self, employee_id: uuid.UUID) -> Employee:
+        emp = self.db.get(Employee, employee_id)
+        if emp is None:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        return emp
 
     def create_employee(self, payload: EmployeeCreateIn) -> EmployeeOut:
         emp_id = uuid.UUID(payload.id) if payload.id else uuid.uuid4()
@@ -37,16 +45,86 @@ class IdentityEmployeeService:
                 id=emp_id,
                 name=payload.name,
                 embedding=payload.embedding,
+                active=True,
             )
             self.db.add(existing)
         else:
             existing.name = payload.name
             existing.embedding = payload.embedding
+            existing.active = True
+            existing.updated_at = _utcnow()
 
+        upsert_employee_visitor(
+            self.db,
+            self.settings,
+            employee_id=existing.id,
+            name=existing.name,
+            embedding=existing.embedding,
+        )
         self.db.commit()
         self.db.refresh(existing)
+        return self._to_out(existing)
+
+    def create_employee_from_images(
+        self,
+        *,
+        name: str,
+        files: list,
+        employee_id: uuid.UUID | None = None,
+    ) -> EmployeeOut:
+        embedding = embedding_from_upload(files)
+        payload = EmployeeCreateIn(
+            id=str(employee_id) if employee_id else None,
+            name=name,
+            embedding=embedding,
+        )
+        return self.create_employee(payload)
+
+    def re_enroll_from_images(self, employee_id: uuid.UUID, files: list) -> EmployeeOut:
+        emp = self.get_employee(employee_id)
+        if not emp.active:
+            raise HTTPException(status_code=400, detail="Employee is inactive")
+        embedding = embedding_from_upload(files)
+        emp.embedding = embedding
+        emp.updated_at = _utcnow()
+        upsert_employee_visitor(
+            self.db,
+            self.settings,
+            employee_id=emp.id,
+            name=emp.name,
+            embedding=embedding,
+        )
+        self.db.commit()
+        self.db.refresh(emp)
+        return self._to_out(emp)
+
+    def update_employee(
+        self, employee_id: uuid.UUID, payload: EmployeeUpdateIn
+    ) -> EmployeeOut:
+        emp = self.get_employee(employee_id)
+        if payload.name is not None:
+            emp.name = payload.name
+        if payload.active is not None:
+            emp.active = payload.active
+        emp.updated_at = _utcnow()
+        if emp.active:
+            upsert_employee_visitor(
+                self.db,
+                self.settings,
+                employee_id=emp.id,
+                name=emp.name,
+                embedding=emp.embedding,
+            )
+        self.db.commit()
+        self.db.refresh(emp)
+        return self._to_out(emp)
+
+    @staticmethod
+    def _to_out(emp: Employee) -> EmployeeOut:
         return EmployeeOut(
-            id=str(existing.id),
-            name=existing.name,
-            created_at=existing.created_at,
+            id=str(emp.id),
+            name=emp.name,
+            active=emp.active,
+            created_at=emp.created_at,
+            updated_at=emp.updated_at,
         )

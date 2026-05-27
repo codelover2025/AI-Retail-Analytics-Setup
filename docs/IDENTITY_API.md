@@ -7,7 +7,7 @@ Backend layer for facial recognition **data only** (no matching / embeddings gen
 | Table | Purpose |
 |-------|---------|
 | `customers` | `id`, `first_seen`, `last_seen`, `visit_count` |
-| `employees` | `id`, `name`, `embedding`, `created_at` |
+| `employees` | `id`, `name`, `embedding`, `active`, `created_at`, `updated_at` |
 | `person_recognitions` | AI logs → exposed as `/api/recognitions` |
 | `face_embeddings` | Optional embeddings linked to customers |
 
@@ -68,6 +68,23 @@ Backend layer for facial recognition **data only** (no matching / embeddings gen
 ```
 
 Requires `X-API-Key` when `API_KEY` is set in `.env`.
+
+### Employee enroll from photos (multipart)
+
+`POST /api/employees/upload`
+
+- Form: `name` (required), `employee_id` (optional UUID)
+- Files: `photos` — one or more JPEG/PNG face images
+
+`POST /api/employees/{employee_id}/re-enroll` — replace embedding from new photos.
+
+`PATCH /api/employees/{employee_id}` — `{ "name": "...", "active": false }` to deactivate.
+
+### Customer enroll from photos
+
+`POST /api/customers/{customer_id}/enroll-photo` — multipart `photos`.
+
+Embeddings are generated server-side via InsightFace (`shared/face_enrollment.py`).
 
 ## Run
 
