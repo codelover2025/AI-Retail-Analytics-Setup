@@ -17,7 +17,7 @@ export async function fetchRecognitions(
   limit = 100
 ): Promise<RecognitionItem[]> {
   const { data } = await apiClient.get<RecognitionItem[]>(
-    "/api/recognitions",
+    "/api/store-recognitions",
     { params: { limit } }
   );
   return data;

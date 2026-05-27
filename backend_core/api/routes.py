@@ -31,13 +31,14 @@ def get_live_visitors(
     return svc.live_visitors(store_id or tenant.store_external_id)
 
 
-@router.get("/recognitions", response_model=list[RecognitionItem])
-def get_recognitions(
+@router.get("/store-recognitions", response_model=list[RecognitionItem])
+def get_store_recognitions(
     store_id: Optional[str] = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
+    """Phase 1 retail recognition shape {id, type, time} — use /api/recognitions for identity logs."""
     svc = AnalyticsService(db, get_settings(), tenant.brand_id)
     return svc.recognitions(store_id=store_id or tenant.store_external_id, limit=limit)
 

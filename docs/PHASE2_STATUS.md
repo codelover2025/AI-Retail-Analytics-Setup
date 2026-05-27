@@ -79,21 +79,21 @@ Legend: **Done** · **Partial** · **Not started** · N/A (out of AI-only scope)
 | ID | Task | Status |
 |----|------|--------|
 | 4.1–4.3, 4.5 | Edge + API typing | **Done** |
-| 4.4 | History API | Not started (HTTP scope) |
+| 4.4 | History API | **Done** — `GET /api/visitors/{id}/visits` + repeat-only |
 
 ### 5. Customer identity
 
 | ID | Task | Status |
 |----|------|--------|
 | 5.1–5.2, 5.6 | Auto ID + metadata + CLI | **Done** |
-| 5.3–5.5 | HTTP APIs | Not started |
+| 5.3–5.5 | HTTP APIs | **Done** — customer profile create/update + enroll embeddings |
 
 ### 6. Employee identification
 
 | ID | Task | Status |
 |----|------|--------|
 | 6.1, 6.3–6.5 | Metadata, CLI, pipeline tag, footfall | **Done** |
-| 6.2, 6.6 | HTTP API | Partial — **API type `employee` done**; REST enroll not started |
+| 6.2, 6.6 | HTTP API | Partial — **employee create/list done**; photo upload/deactivate not implemented in reduced scope |
 
 ---
 

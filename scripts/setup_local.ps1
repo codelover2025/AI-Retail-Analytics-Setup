@@ -15,6 +15,7 @@ python scripts/merge_footfall_daily.py
 <<<<<<< HEAD
 python scripts/rotate_edge_key.py
 python scripts/seed_sample_alerts.py
+python scripts/seed_identity_demo.py
 =======
 >>>>>>> origin/main
 Write-Host ""

@@ -210,8 +210,8 @@ See [phase 1/ORZEN_BRIEF_ALIGNMENT.md](./phase%201/ORZEN_BRIEF_ALIGNMENT.md) for
 
 ## Acceptance criteria (sign-off)
 
-1. Enroll customer via API with 1+ face photos → subsequent edge run matches same `visitor_id`.  
-2. Enroll employee via API → edge labels recognition `employee` and does **not** increment daily unique footfall.  
+1. Enroll customer via API with a **provided embedding vector** → subsequent edge run matches same `visitor_id`. (Photo upload/enroll-from-frames not included in this reduced HTTP slice.)  
+2. Enroll employee via API (embedding vector) → edge labels recognition `employee` and does **not** increment daily unique footfall.  
 3. Same customer on two visits within 24h → `repeat_visitor` alert and API `type: repeat_visitor`.  
 4. New anonymous visitor still auto-created when no gallery match.  
 5. `GET /api/recognitions` includes types: `new_visitor`, `repeat_visitor`, `visitor`, `employee` (and existing `vip` if enabled).  

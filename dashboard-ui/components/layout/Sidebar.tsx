@@ -5,15 +5,23 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bell,
+  ClipboardList,
   LayoutDashboard,
+  Repeat,
+  UserCircle,
   Users,
+  BadgeCheck,
 } from "lucide-react";
 import clsx from "clsx";
 import { OrzenLogo } from "@/components/OrzenLogo";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/visitors", label: "Visitors", icon: Users },
+  { href: "/customers", label: "Customers", icon: UserCircle },
+  { href: "/recognitions", label: "Logs", icon: ClipboardList },
+  { href: "/repeat-visitors", label: "Repeat / New", icon: Repeat },
+  { href: "/employees", label: "Employees", icon: BadgeCheck },
+  { href: "/visitors", label: "Store visitors", icon: Users },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
