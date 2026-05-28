@@ -33,6 +33,7 @@ def ensure_employee_phase2_columns() -> None:
     """Add active + updated_at to employees if missing."""
     from shared.database.session import engine, is_sqlite
 
+    sqlite = is_sqlite()
     insp = inspect(engine)
     if "employees" not in insp.get_table_names():
         return
@@ -41,14 +42,20 @@ def ensure_employee_phase2_columns() -> None:
     if "active" not in existing:
         statements.append(
             "ALTER TABLE employees ADD COLUMN active "
-            + ("INTEGER DEFAULT 1 NOT NULL" if is_sqlite() else "BOOLEAN DEFAULT TRUE NOT NULL")
+            + ("INTEGER DEFAULT 1 NOT NULL" if sqlite else "BOOLEAN DEFAULT TRUE NOT NULL")
         )
     if "updated_at" not in existing:
-        col_type = "DATETIME" if is_sqlite() else "TIMESTAMP WITH TIME ZONE"
-        default = "CURRENT_TIMESTAMP"
-        statements.append(
-            f"ALTER TABLE employees ADD COLUMN updated_at {col_type} DEFAULT {default}"
-        )
+        if sqlite:
+            # SQLite ALTER TABLE does not allow non-constant defaults (e.g. CURRENT_TIMESTAMP).
+            statements.append("ALTER TABLE employees ADD COLUMN updated_at DATETIME")
+            statements.append(
+                "UPDATE employees SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"
+            )
+        else:
+            statements.append(
+                "ALTER TABLE employees ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE "
+                "DEFAULT CURRENT_TIMESTAMP"
+            )
     if not statements:
         return
     with engine.begin() as conn:
