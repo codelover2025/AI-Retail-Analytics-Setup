@@ -1,6 +1,5 @@
 """Legacy dashboard paths (/api/*) — same contract as /api/v1/analytics/*."""
 
-from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -9,7 +8,6 @@ from sqlalchemy.orm import Session
 from backend_core.auth.dependencies import get_tenant_optional
 from backend_core.schemas.contract import (
     AlertItem,
-    FootfallResponse,
     LiveVisitorsResponse,
     RecognitionItem,
 )
@@ -41,17 +39,6 @@ def get_store_recognitions(
     """Phase 1 retail recognition shape {id, type, time} — use /api/recognitions for identity logs."""
     svc = AnalyticsService(db, get_settings(), tenant.brand_id)
     return svc.recognitions(store_id=store_id or tenant.store_external_id, limit=limit)
-
-
-@router.get("/footfall", response_model=FootfallResponse)
-def get_footfall(
-    store_id: Optional[str] = Query(default=None),
-    from_day: Optional[date] = Query(default=None),
-    tenant: TenantContext = Depends(get_tenant_optional),
-    db: Session = Depends(get_db),
-):
-    svc = AnalyticsService(db, get_settings(), tenant.brand_id)
-    return svc.footfall(store_id=store_id or tenant.store_external_id, from_day=from_day)
 
 
 @router.get("/alerts", response_model=list[AlertItem])

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend_core.api.identity_routes import router as identity_router
+from backend_core.api.multi_camera_routes import router as multi_camera_router
 from backend_core.api.routes import router as api_router
 from backend_core.api.v1 import api_v1
 from backend_core.api.websocket import router as ws_router
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(api_v1)
 app.include_router(identity_router)
 app.include_router(api_router)
+app.include_router(multi_camera_router)
 app.include_router(ws_router)
 
 

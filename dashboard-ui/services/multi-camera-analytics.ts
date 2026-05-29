@@ -1,0 +1,134 @@
+import { apiClient } from "./api";
+
+export interface CameraListItem {
+  camera_id: string;
+  name?: string | null;
+  enabled: boolean;
+}
+
+export interface FootfallCameraPoint {
+  day: string;
+  camera_id?: string | null;
+  total_visitors: number;
+  repeat_visitors: number;
+  repeat_ratio: number;
+}
+
+export interface FootfallCameraResponse {
+  store_id: string;
+  camera_id?: string | null;
+  aggregated: boolean;
+  points: FootfallCameraPoint[];
+  summary: FootfallCameraPoint;
+}
+
+export interface DwellTimeStats {
+  camera_id?: string | null;
+  session_count: number;
+  avg_dwell_seconds: number;
+  min_dwell_seconds: number;
+  max_dwell_seconds: number;
+  p50_dwell_seconds: number;
+}
+
+export interface ZoneAnalyticsItem {
+  zone_name: string;
+  total_time_spent: number;
+  visit_count: number;
+  avg_time_spent: number;
+}
+
+export interface ZoneAnalyticsResponse {
+  camera_id?: string | null;
+  zones: ZoneAnalyticsItem[];
+}
+
+export interface RepeatAnalyticsResponse {
+  camera_id?: string | null;
+  total_visitors: number;
+  repeat_visitors: number;
+  new_visitors: number;
+  repeat_ratio: number;
+}
+
+export interface InteractionItem {
+  id: string;
+  customer_id: string;
+  employee_id: string;
+  camera_id: string;
+  timestamp: string;
+}
+
+export interface InteractionsResponse {
+  camera_id?: string | null;
+  total: number;
+  items: InteractionItem[];
+}
+
+export async function fetchCameras(): Promise<CameraListItem[]> {
+  const { data } = await apiClient.get<CameraListItem[]>("/api/cameras");
+  return data;
+}
+
+export async function fetchCameraFootfall(
+  cameraId?: string,
+  storeId?: string,
+  days = 30
+): Promise<FootfallCameraResponse> {
+  const { data } = await apiClient.get<FootfallCameraResponse>("/api/footfall", {
+    params: {
+      camera_id: cameraId,
+      store_id: storeId,
+      days,
+    },
+  });
+  return data;
+}
+
+export async function fetchStoreFootfallAll(days = 30): Promise<FootfallCameraResponse> {
+  const { data } = await apiClient.get<FootfallCameraResponse>("/api/footfall", {
+    params: { store_id: "ALL", days },
+  });
+  return data;
+}
+
+export async function fetchDwellTime(
+  cameraId?: string,
+  days = 7
+): Promise<DwellTimeStats> {
+  const { data } = await apiClient.get<DwellTimeStats>("/api/dwell-time", {
+    params: { camera_id: cameraId, days },
+  });
+  return data;
+}
+
+export async function fetchZones(
+  cameraId?: string,
+  days = 7
+): Promise<ZoneAnalyticsResponse> {
+  const { data } = await apiClient.get<ZoneAnalyticsResponse>("/api/zones", {
+    params: { camera_id: cameraId, days },
+  });
+  return data;
+}
+
+export async function fetchRepeatAnalytics(
+  cameraId?: string,
+  days = 30
+): Promise<RepeatAnalyticsResponse> {
+  const { data } = await apiClient.get<RepeatAnalyticsResponse>(
+    "/api/repeat-analytics",
+    { params: { camera_id: cameraId, days } }
+  );
+  return data;
+}
+
+export async function fetchInteractions(
+  cameraId?: string,
+  limit = 50
+): Promise<InteractionsResponse> {
+  const { data } = await apiClient.get<InteractionsResponse>("/api/interactions", {
+    params: { camera_id: cameraId, limit },
+  });
+  return data;
+}

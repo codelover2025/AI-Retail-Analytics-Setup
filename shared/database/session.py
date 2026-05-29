@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from shared.config import get_settings
 from shared.database.models import Base
 from shared.database import audit_models  # noqa: F401
+from shared.database import analytics_models  # noqa: F401 — multi-camera tables
 from shared.database import tenant_models  # noqa: F401 — register tenant tables
 
 settings = get_settings()
