@@ -16,6 +16,11 @@ from backend_core.schemas.multi_camera import (
     InteractionsResponse,
     RepeatAnalyticsResponse,
     ZoneAnalyticsResponse,
+    HeatmapResponse,
+    JourneyResponse,
+    JourneyStep,
+    SessionOut,
+    DemographicsResponse,
 )
 from backend_core.services.analytics import AnalyticsService
 from backend_core.services.multi_camera_analytics import MultiCameraAnalyticsService
@@ -48,7 +53,9 @@ def ingest_ai_analytics(
     db: Session = Depends(get_db),
 ):
     """Persist AI output batches (sessions, zones, interactions) without identity merge."""
-    return _svc(db, tenant).ingest_batch(body)
+    result = _svc(db, tenant).ingest_batch(body)
+    db.commit()
+    return result
 
 
 @router.get("/footfall")
@@ -116,3 +123,42 @@ def get_interactions(
     db: Session = Depends(get_db),
 ):
     return _svc(db, tenant).interactions(camera_id=camera_id, limit=limit)
+
+
+@router.get("/heatmap", response_model=HeatmapResponse)
+def get_heatmap(
+    camera_id: Optional[str] = Query(default=None),
+    days: int = Query(default=7, ge=1, le=90),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return _svc(db, tenant).heatmap(camera_id=camera_id, days=days)
+
+
+@router.get("/journey/{person_id}", response_model=JourneyResponse)
+def get_journey(
+    person_id: str,
+    days: int = Query(default=30, ge=1, le=365),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return _svc(db, tenant).journey(person_id, days=days)
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+def list_sessions(
+    camera_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return _svc(db, tenant).list_sessions(camera_id=camera_id, limit=limit)
+
+
+@router.get("/demographics", response_model=DemographicsResponse)
+def get_demographics(
+    days: int = Query(default=7, ge=1, le=90),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return _svc(db, tenant).demographics(days=days)

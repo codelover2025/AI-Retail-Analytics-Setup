@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     enrollment_min_frames: int = 3
     enrollment_frame_similarity: float = 0.6
 
+    # Phase 3 — multi-camera analytics engine
+    max_cameras_per_worker: int = 3
+    max_faces_per_frame: int = 5
+    analytics_exit_timeout_seconds: float = 4.0
+    analytics_batch_interval_seconds: float = 5.0
+    analytics_queue_size: int = 32
+    analytics_output_path: str = "./data/analytics_sessions.jsonl"
+    zones_json: Optional[str] = None
+
     # Pipeline tuning
     frame_skip: int = 2
     det_size: int = 640

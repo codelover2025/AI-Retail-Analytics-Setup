@@ -48,6 +48,7 @@ export default function MultiCameraPage() {
     zones,
     repeat,
     interactions,
+    heatmap,
     loading,
     error,
     refresh,
@@ -67,6 +68,16 @@ export default function MultiCameraPage() {
         repeat: p.repeat_visitors,
       }));
   }, [cameraId, storeFootfall, cameraFootfall]);
+
+  const heatmapChart = useMemo(
+    () =>
+      (heatmap?.cells ?? []).map((c) => ({
+        name: c.zone_name,
+        intensity: Math.round(c.intensity * 100),
+        time: Math.round(c.total_time_spent),
+      })),
+    [heatmap]
+  );
 
   const zoneChart = useMemo(
     () =>
@@ -185,6 +196,23 @@ export default function MultiCameraPage() {
             )}
 
             <section className="grid gap-6 lg:grid-cols-2">
+              {heatmapChart.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <h2 className="mb-3 text-sm font-semibold text-slate-800">
+                    Zone heatmap (intensity)
+                  </h2>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={heatmapChart}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Bar dataKey="intensity" name="Intensity %" fill="#f59e0b" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
               {zoneChart.length > 0 && (
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">

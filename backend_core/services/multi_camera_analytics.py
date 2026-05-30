@@ -19,9 +19,16 @@ from backend_core.schemas.multi_camera import (
     DwellTimeStats,
     FootfallCameraPoint,
     FootfallCameraResponse,
+    HeatmapCell,
+    HeatmapResponse,
     InteractionItem,
     InteractionsResponse,
+    JourneyResponse,
+    JourneyStep,
     RepeatAnalyticsResponse,
+    SessionOut,
+    DemographicsPoint,
+    DemographicsResponse,
     ZoneAnalyticsItem,
     ZoneAnalyticsResponse,
 )
@@ -33,6 +40,7 @@ from shared.database.analytics_models import (
     Interaction,
     ZoneLog,
 )
+from shared.database.demographics_models import DemographicsDaily
 from shared.database.multi_camera_repository import MultiCameraAnalyticsRepository
 from shared.database.tenant_models import Camera, Store
 
@@ -130,6 +138,7 @@ class MultiCameraAnalyticsService:
                 entry_time=entry,
                 exit_time=exit_t,
                 dwell_time=s.dwell_time,
+                journey_path=s.journey_path or [z.zone_name for z in s.zones],
             )
             sessions_n += 1
             upsert_footfall_on_session(
@@ -141,6 +150,13 @@ class MultiCameraAnalyticsService:
                 entry_time=entry,
                 prior_visits=prior,
             )
+            if s.age_bucket and s.gender:
+                self._increment_demographics(
+                    store_id=store_ext,
+                    day=entry.date(),
+                    age_bucket=s.age_bucket,
+                    gender=s.gender,
+                )
             for z in s.zones:
                 self.repo.add_zone_log(
                     person_id=s.person_id,
@@ -381,3 +397,132 @@ class MultiCameraAnalyticsService:
             for r in rows
         ]
         return InteractionsResponse(camera_id=camera_id, total=len(items), items=items)
+
+    def heatmap(self, *, camera_id: str | None = None, days: int = 7) -> HeatmapResponse:
+        zone_data = self.zones(camera_id=camera_id, days=days)
+        if not zone_data.zones:
+            return HeatmapResponse(camera_id=camera_id, cells=[])
+        max_time = max(z.total_time_spent for z in zone_data.zones) or 1.0
+        cells = [
+            HeatmapCell(
+                zone_name=z.zone_name,
+                intensity=round(z.total_time_spent / max_time, 4),
+                total_time_spent=z.total_time_spent,
+                visit_count=z.visit_count,
+            )
+            for z in zone_data.zones
+        ]
+        return HeatmapResponse(camera_id=camera_id, cells=cells)
+
+    def journey(self, person_id: str, *, days: int = 30) -> JourneyResponse:
+        cutoff = _utcnow() - timedelta(days=days)
+        rows = list(
+            self.db.scalars(
+                select(AnalyticsSession)
+                .where(
+                    AnalyticsSession.brand_id == self.brand_id,
+                    AnalyticsSession.store_id == self.default_store_id,
+                    AnalyticsSession.person_id == person_id,
+                    AnalyticsSession.entry_time >= cutoff,
+                )
+                .order_by(AnalyticsSession.entry_time.asc())
+            ).all()
+        )
+        cameras = {r.camera_id for r in rows}
+        steps = [
+            JourneyStep(
+                camera_id=r.camera_id,
+                entry_time=r.entry_time,
+                exit_time=r.exit_time,
+                dwell_time=float(r.dwell_time or 0),
+                journey_path=list(r.journey_path or []),
+            )
+            for r in rows
+        ]
+        return JourneyResponse(
+            person_id=person_id,
+            cross_camera=len(cameras) > 1,
+            steps=steps,
+        )
+
+    def list_sessions(
+        self, *, camera_id: str | None = None, limit: int = 100
+    ) -> list[SessionOut]:
+        stmt = (
+            select(AnalyticsSession)
+            .where(
+                AnalyticsSession.brand_id == self.brand_id,
+                AnalyticsSession.store_id == self.default_store_id,
+            )
+            .order_by(AnalyticsSession.entry_time.desc())
+            .limit(limit)
+        )
+        if camera_id:
+            stmt = stmt.where(AnalyticsSession.camera_id == camera_id)
+        rows = list(self.db.scalars(stmt).all())
+        return [
+            SessionOut(
+                id=str(r.id),
+                person_id=r.person_id,
+                camera_id=r.camera_id,
+                entry_time=r.entry_time,
+                exit_time=r.exit_time,
+                dwell_time=float(r.dwell_time or 0),
+                journey_path=list(r.journey_path or []),
+            )
+            for r in rows
+        ]
+
+    def demographics(self, *, days: int = 7) -> DemographicsResponse:
+        cutoff = date.today() - timedelta(days=days)
+        rows = self.db.execute(
+            select(
+                DemographicsDaily.age_bucket,
+                DemographicsDaily.gender,
+                func.sum(DemographicsDaily.count),
+            )
+            .where(
+                DemographicsDaily.brand_id == self.brand_id,
+                DemographicsDaily.store_id == self.default_store_id,
+                DemographicsDaily.day >= cutoff,
+            )
+            .group_by(DemographicsDaily.age_bucket, DemographicsDaily.gender)
+        ).all()
+        points = [
+            DemographicsPoint(
+                age_bucket=r.age_bucket,
+                gender=r.gender,
+                count=int(r[2] or 0),
+            )
+            for r in rows
+        ]
+        return DemographicsResponse(
+            store_id=self.default_store_id,
+            day=date.today(),
+            points=points,
+        )
+
+    def _increment_demographics(
+        self, *, store_id: str, day: date, age_bucket: str, gender: str
+    ) -> None:
+        row = self.db.scalar(
+            select(DemographicsDaily).where(
+                DemographicsDaily.brand_id == self.brand_id,
+                DemographicsDaily.store_id == store_id,
+                DemographicsDaily.day == day,
+                DemographicsDaily.age_bucket == age_bucket,
+                DemographicsDaily.gender == gender,
+            )
+        )
+        if row is None:
+            row = DemographicsDaily(
+                brand_id=self.brand_id,
+                store_id=store_id,
+                day=day,
+                age_bucket=age_bucket,
+                gender=gender,
+                count=1,
+            )
+            self.db.add(row)
+        else:
+            row.count += 1

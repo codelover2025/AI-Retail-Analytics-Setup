@@ -81,8 +81,13 @@ class AISessionPayload(BaseModel):
     camera_id: str
     dwell_time: float
     zones: list[AIZonePayload] = Field(default_factory=list)
+    journey_path: list[str] = Field(default_factory=list)
     entry_time: Optional[datetime] = None
     exit_time: Optional[datetime] = None
+    interaction: bool = False
+    identity_type: str = "visitor"
+    age_bucket: Optional[str] = None
+    gender: Optional[str] = None
 
 
 class AIInteractionPayload(BaseModel):
@@ -104,3 +109,52 @@ class AIAnalyticsIngestResponse(BaseModel):
     sessions_accepted: int
     zone_logs_accepted: int
     interactions_accepted: int
+
+
+class HeatmapCell(BaseModel):
+    zone_name: str
+    intensity: float = Field(ge=0.0, le=1.0)
+    total_time_spent: float
+    visit_count: int
+
+
+class HeatmapResponse(BaseModel):
+    camera_id: Optional[str] = None
+    cells: list[HeatmapCell]
+
+
+class JourneyStep(BaseModel):
+    camera_id: str
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    dwell_time: float
+    journey_path: list[str] = Field(default_factory=list)
+
+
+class JourneyResponse(BaseModel):
+    person_id: str
+    cross_camera: bool
+    steps: list[JourneyStep]
+
+
+class SessionOut(BaseModel):
+    id: str
+    person_id: str
+    camera_id: str
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    dwell_time: float
+    journey_path: list[str] = Field(default_factory=list)
+    identity_type: str = "visitor"
+
+
+class DemographicsPoint(BaseModel):
+    age_bucket: str
+    gender: str
+    count: int
+
+
+class DemographicsResponse(BaseModel):
+    store_id: str
+    day: date
+    points: list[DemographicsPoint]

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bell,
-  Cctv,
   ClipboardList,
   LayoutDashboard,
   Repeat,
@@ -25,7 +24,6 @@ const nav = [
   { href: "/visitors", label: "Store visitors", icon: Users },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/multi-camera", label: "Multi-camera", icon: Cctv },
 ];
 
 export function Sidebar() {

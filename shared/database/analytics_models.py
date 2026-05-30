@@ -18,6 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database.models import Base
+from shared.database.types import JSONCol
 
 
 class AnalyticsSession(Base):
@@ -37,6 +38,7 @@ class AnalyticsSession(Base):
     entry_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     exit_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     dwell_time: Mapped[float] = mapped_column(Float, default=0.0)
+    journey_path: Mapped[Optional[list]] = mapped_column("journey_path", JSONCol, default=list)
 
 
 class ZoneLog(Base):

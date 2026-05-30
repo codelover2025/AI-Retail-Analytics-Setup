@@ -32,6 +32,14 @@ Internal: [docs/PHASE1_STATUS.md](docs/PHASE1_STATUS.md) · [docs/PHASE1.md](doc
 **[docs/PHASE2.md](docs/PHASE2.md)** — reduced scope: recognition, repeat visitor, customer/employee identity.  
 Tracker: [docs/PHASE2_STATUS.md](docs/PHASE2_STATUS.md)
 
+## Phase 3 — Multi-camera analytics
+
+**[docs/ANALYTICS_ENGINE.md](docs/ANALYTICS_ENGINE.md)** — entry/exit, dwell, zones, interactions (no API/UI).
+
+```powershell
+python -m edge_ai.analytics
+```
+
 ---
 
 Pipeline: **RTSP/webcam → InsightFace → ByteTrack → cosine match → DB → FastAPI → Dashboard**

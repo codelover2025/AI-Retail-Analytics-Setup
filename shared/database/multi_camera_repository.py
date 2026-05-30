@@ -29,6 +29,7 @@ class MultiCameraAnalyticsRepository:
         entry_time: datetime,
         exit_time: Optional[datetime],
         dwell_time: float,
+        journey_path: Optional[list[str]] = None,
     ) -> AnalyticsSession:
         row = AnalyticsSession(
             brand_id=self.brand_id,
@@ -38,6 +39,7 @@ class MultiCameraAnalyticsRepository:
             entry_time=entry_time,
             exit_time=exit_time,
             dwell_time=dwell_time,
+            journey_path=journey_path or [],
         )
         self.db.add(row)
         return row

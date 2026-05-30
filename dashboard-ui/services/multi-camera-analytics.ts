@@ -132,3 +132,50 @@ export async function fetchInteractions(
   });
   return data;
 }
+
+export interface HeatmapCell {
+  zone_name: string;
+  intensity: number;
+  total_time_spent: number;
+  visit_count: number;
+}
+
+export interface HeatmapResponse {
+  camera_id?: string | null;
+  cells: HeatmapCell[];
+}
+
+export async function fetchHeatmap(
+  cameraId?: string,
+  days = 7
+): Promise<HeatmapResponse> {
+  const { data } = await apiClient.get<HeatmapResponse>("/api/heatmap", {
+    params: { camera_id: cameraId, days },
+  });
+  return data;
+}
+
+export interface JourneyStep {
+  camera_id: string;
+  entry_time: string;
+  exit_time?: string | null;
+  dwell_time: number;
+  journey_path: string[];
+}
+
+export interface JourneyResponse {
+  person_id: string;
+  cross_camera: boolean;
+  steps: JourneyStep[];
+}
+
+export async function fetchJourney(
+  personId: string,
+  days = 30
+): Promise<JourneyResponse> {
+  const { data } = await apiClient.get<JourneyResponse>(
+    `/api/journey/${personId}`,
+    { params: { days } }
+  );
+  return data;
+}

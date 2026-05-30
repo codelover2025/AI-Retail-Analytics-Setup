@@ -8,10 +8,12 @@ import {
   fetchInteractions,
   fetchRepeatAnalytics,
   fetchStoreFootfallAll,
+  fetchHeatmap,
   fetchZones,
   type CameraListItem,
   type DwellTimeStats,
   type FootfallCameraResponse,
+  type HeatmapResponse,
   type InteractionsResponse,
   type RepeatAnalyticsResponse,
   type ZoneAnalyticsResponse,
@@ -32,6 +34,7 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
   const [interactions, setInteractions] = useState<InteractionsResponse | null>(
     null
   );
+  const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +46,7 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
       setCameras(camList);
 
       const camParam = cameraId === "ALL" ? undefined : cameraId;
-      const [storeFf, camFf, dwellStats, zoneStats, repeatStats, ix] =
+      const [storeFf, camFf, dwellStats, zoneStats, repeatStats, ix, hm] =
         await Promise.all([
           fetchStoreFootfallAll(),
           camParam ? fetchCameraFootfall(camParam) : Promise.resolve(null),
@@ -51,6 +54,7 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
           fetchZones(camParam),
           fetchRepeatAnalytics(camParam),
           fetchInteractions(camParam, 30),
+          fetchHeatmap(camParam),
         ]);
 
       setStoreFootfall(storeFf);
@@ -59,6 +63,7 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
       setZones(zoneStats);
       setRepeat(repeatStats);
       setInteractions(ix);
+      setHeatmap(hm);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load analytics");
     } finally {
@@ -78,6 +83,7 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
     zones,
     repeat,
     interactions,
+    heatmap,
     loading,
     error,
     refresh: load,

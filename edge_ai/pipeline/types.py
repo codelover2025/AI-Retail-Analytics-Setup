@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 import uuid
 
-IdentityType = Literal["new_visitor", "visitor", "repeat_visitor", "employee"]
+IdentityType = Literal["new_visitor", "visitor", "repeat_visitor", "employee", "watchlist"]
 
 PERSON_KIND_CUSTOMER = "customer"
 PERSON_KIND_EMPLOYEE = "employee"

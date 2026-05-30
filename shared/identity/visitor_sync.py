@@ -7,7 +7,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from edge_ai.pipeline.store import META_PERSON_ID, PersonGalleryStore
+from edge_ai.pipeline.store import META_PERSON_ID, META_PERSON_KIND, PersonGalleryStore
 from shared.config import Settings
 from shared.database.models import Visitor
 from shared.database.repository import AnalyticsRepository
