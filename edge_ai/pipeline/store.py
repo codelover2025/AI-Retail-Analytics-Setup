@@ -61,10 +61,12 @@ class PersonGalleryStore:
         return self.db.get(Visitor, visitor_id)
 
     def allocate_person_id(self) -> int:
-        max_id = 0
-        for visitor in self.repo.list_visitors_with_embeddings():
-            max_id = max(max_id, person_id_from_visitor(visitor))
-        return max_id + 1
+        from sqlalchemy import func, select, Integer
+        stmt = select(
+            func.max(func.cast(Visitor.metadata_["person_id"].as_string(), Integer))
+        ).where(Visitor.brand_id == self.brand_id)
+        max_id = self.db.scalar(stmt)
+        return (max_id or 0) + 1
 
     def register_person(
         self,

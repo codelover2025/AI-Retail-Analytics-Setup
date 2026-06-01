@@ -45,3 +45,10 @@ class AlertItem(BaseModel):
     type: str
     message: str
     time: datetime
+
+
+class DashboardSummaryResponse(BaseModel):
+    live: LiveVisitorsResponse
+    recognitions: list[RecognitionItem]
+    footfall: FootfallResponse
+    alerts: list[AlertItem]

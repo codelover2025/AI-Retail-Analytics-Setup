@@ -48,10 +48,12 @@ def init_db() -> None:
         from shared.database.migrations import (
             ensure_employee_phase2_columns,
             ensure_recognition_phase2_columns,
+            ensure_identity_multi_tenant_columns,
         )
 
         ensure_recognition_phase2_columns()
         ensure_employee_phase2_columns()
+        ensure_identity_multi_tenant_columns()
         if is_sqlite():
             # quick connectivity check
             with engine.connect() as conn:

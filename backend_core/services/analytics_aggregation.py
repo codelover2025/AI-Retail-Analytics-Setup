@@ -49,7 +49,25 @@ def refresh_footfall_for_day(
     updated = 0
     for cam, persons in by_camera.items():
         total = len(persons)
-        repeat = sum(1 for v in persons.values() if v > 1)
+        repeat = 0
+        for person_id, visits in persons.items():
+            # A person is a repeat visitor on this camera today if:
+            # 1. They visited this camera in the past (prior to today) OR
+            # 2. They visited this camera more than once today
+            prior_count = db.scalar(
+                select(func.count())
+                .select_from(AnalyticsSession)
+                .where(
+                    AnalyticsSession.brand_id == brand_id,
+                    AnalyticsSession.store_id == store_id,
+                    AnalyticsSession.camera_id == cam,
+                    AnalyticsSession.person_id == person_id,
+                    func.date(AnalyticsSession.entry_time) < day,
+                )
+            ) or 0
+            if prior_count > 0 or visits > 1:
+                repeat += 1
+
         footfall = repo.get_or_create_footfall_row(store_id=store_id, camera_id=cam, day=day)
         footfall.total_visitors = total
         footfall.repeat_visitors = repeat
@@ -72,7 +90,29 @@ def upsert_footfall_on_session(
     day = entry_time.date()
     repo = MultiCameraAnalyticsRepository(db, brand_id)
     row = repo.get_or_create_footfall_row(store_id=store_id, camera_id=camera_id, day=day)
-    row.total_visitors += 1
-    if prior_visits > 0:
+
+    # Count how many sessions this person has had today on this camera (including the one just added).
+    count_today = db.scalar(
+        select(func.count())
+        .select_from(AnalyticsSession)
+        .where(
+            AnalyticsSession.brand_id == brand_id,
+            AnalyticsSession.person_id == person_id,
+            AnalyticsSession.camera_id == camera_id,
+            AnalyticsSession.store_id == store_id,
+            func.date(AnalyticsSession.entry_time) == day,
+        )
+    ) or 1
+
+    if count_today == 1:
+        # First session today: they represent a new unique visitor for this camera today.
+        row.total_visitors += 1
+        if prior_visits > 0:
+            # They have visited this camera in the past: count as unique repeat today.
+            row.repeat_visitors += 1
+    elif count_today == 2 and prior_visits == 0:
+        # Second session today, but no history from past days: they now cross the line
+        # into being a repeat visitor for today.
         row.repeat_visitors += 1
+
     row.updated_at = _utcnow()

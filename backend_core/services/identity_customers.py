@@ -35,7 +35,7 @@ class IdentityCustomerService:
         ]
 
     def list_repeat_visitors(self, min_visits: int = 2, limit: int = 500) -> list[RepeatVisitorOut]:
-        stmt = (
+        subquery = (
             select(
                 PersonRecognition.person_id,
                 func.min(PersonRecognition.timestamp).label("first_seen"),
@@ -45,13 +45,19 @@ class IdentityCustomerService:
             .where(PersonRecognition.type.in_(("customer", "new_visitor", "repeat_visitor", "visitor")))
             .group_by(PersonRecognition.person_id)
             .having(func.count() >= min_visits)
-            .order_by(func.max(PersonRecognition.timestamp).desc())
+            .subquery()
+        )
+        
+        stmt = (
+            select(subquery, Customer)
+            .outerjoin(Customer, subquery.c.person_id == Customer.id)
+            .order_by(subquery.c.last_seen.desc())
             .limit(limit)
         )
         rows = self.db.execute(stmt).all()
         out: list[RepeatVisitorOut] = []
         for row in rows:
-            cust = self.db.get(Customer, row.person_id)
+            cust = row.Customer
             if cust:
                 out.append(
                     RepeatVisitorOut(

@@ -21,6 +21,7 @@ from backend_core.schemas.multi_camera import (
     JourneyStep,
     SessionOut,
     DemographicsResponse,
+    MultiCameraSummaryResponse,
 )
 from backend_core.services.analytics import AnalyticsService
 from backend_core.services.multi_camera_analytics import MultiCameraAnalyticsService
@@ -162,3 +163,33 @@ def get_demographics(
     db: Session = Depends(get_db),
 ):
     return _svc(db, tenant).demographics(days=days)
+
+
+@router.get("/multi-camera/summary", response_model=MultiCameraSummaryResponse)
+def get_multi_camera_summary(
+    camera_id: Optional[str] = Query(default=None),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    svc = _svc(db, tenant)
+    cameras = svc.list_cameras()
+    store_footfall = svc.footfall(store_id="ALL", camera_id=None, days=30)
+    
+    cam_param = None if camera_id == "ALL" or not camera_id else camera_id
+    camera_footfall = svc.footfall(camera_id=cam_param, store_id=tenant.store_external_id, days=30) if cam_param else None
+    dwell = svc.dwell_time(camera_id=cam_param, days=7)
+    zones = svc.zones(camera_id=cam_param, days=7)
+    repeat = svc.repeat_analytics(camera_id=cam_param, days=30)
+    interactions = svc.interactions(camera_id=cam_param, limit=30)
+    heatmap = svc.heatmap(camera_id=cam_param, days=7)
+    
+    return MultiCameraSummaryResponse(
+        cameras=cameras,
+        store_footfall=store_footfall,
+        camera_footfall=camera_footfall,
+        dwell=dwell,
+        zones=zones,
+        repeat=repeat,
+        interactions=interactions,
+        heatmap=heatmap,
+    )

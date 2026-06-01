@@ -179,3 +179,22 @@ export async function fetchJourney(
   );
   return data;
 }
+
+
+export interface MultiCameraSummaryResponse {
+  cameras: CameraListItem[];
+  store_footfall: FootfallCameraResponse;
+  camera_footfall?: FootfallCameraResponse | null;
+  dwell?: DwellTimeStats | null;
+  zones?: ZoneAnalyticsResponse | null;
+  repeat?: RepeatAnalyticsResponse | null;
+  interactions?: InteractionsResponse | null;
+  heatmap?: HeatmapResponse | null;
+}
+
+export async function fetchMultiCameraSummary(cameraId?: string): Promise<MultiCameraSummaryResponse> {
+  const { data } = await apiClient.get<MultiCameraSummaryResponse>("/api/v1/analytics/multi-camera/summary", {
+    params: cameraId && cameraId !== "ALL" ? { camera_id: cameraId } : undefined
+  });
+  return data;
+}

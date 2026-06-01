@@ -17,6 +17,7 @@ class Customer(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid(as_uuid=True), index=True, nullable=True)
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     visit_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -30,6 +31,7 @@ class Employee(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid(as_uuid=True), index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     embedding: Mapped[list[float]] = mapped_column(JSONCol, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -52,6 +54,8 @@ class PersonRecognition(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    brand_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid(as_uuid=True), index=True, nullable=True)
+    store_id: Mapped[Optional[str]] = mapped_column(String(64), index=True, nullable=True)
     person_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), index=True, nullable=False)
     type: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)

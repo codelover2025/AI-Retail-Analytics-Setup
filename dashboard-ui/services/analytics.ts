@@ -43,11 +43,6 @@ export async function fetchAlerts(
 }
 
 export async function fetchDashboardSnapshot() {
-  const [live, recognitions, footfall, alerts] = await Promise.all([
-    fetchLiveVisitors(),
-    fetchRecognitions(50),
-    fetchFootfall(),
-    fetchAlerts(20),
-  ]);
-  return { live, recognitions, footfall, alerts };
+  const { data } = await apiClient.get("/api/v1/analytics/dashboard/summary");
+  return data;
 }

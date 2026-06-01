@@ -10,6 +10,7 @@ from backend_core.schemas.contract import (
     FootfallResponse,
     LiveVisitorsResponse,
     RecognitionItem,
+    DashboardSummaryResponse,
 )
 from backend_core.services.analytics import AnalyticsService
 from shared.config import get_settings
@@ -64,4 +65,24 @@ def get_alerts(
         store_id=store_id or tenant.store_external_id,
         limit=limit,
         unacknowledged_only=unacknowledged_only,
+    )
+
+
+@router.get("/dashboard/summary", response_model=DashboardSummaryResponse)
+def get_dashboard_summary(
+    store_id: Optional[str] = Query(default=None),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    svc = AnalyticsService(db, get_settings(), tenant.brand_id)
+    store = store_id or tenant.store_external_id
+    live = svc.live_visitors(store)
+    recognitions = svc.recognitions(store_id=store, limit=50)
+    footfall = svc.footfall(store_id=store, from_day=None)
+    alerts = svc.alerts(store_id=store, limit=20, unacknowledged_only=False)
+    return DashboardSummaryResponse(
+        live=live,
+        recognitions=recognitions,
+        footfall=footfall,
+        alerts=alerts,
     )

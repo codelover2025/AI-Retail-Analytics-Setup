@@ -158,3 +158,14 @@ class DemographicsResponse(BaseModel):
     store_id: str
     day: date
     points: list[DemographicsPoint]
+
+
+class MultiCameraSummaryResponse(BaseModel):
+    cameras: list[CameraListItem]
+    store_footfall: FootfallCameraResponse
+    camera_footfall: Optional[FootfallCameraResponse] = None
+    dwell: Optional[DwellTimeStats] = None
+    zones: Optional[ZoneAnalyticsResponse] = None
+    repeat: Optional[RepeatAnalyticsResponse] = None
+    interactions: Optional[InteractionsResponse] = None
+    heatmap: Optional[HeatmapResponse] = None

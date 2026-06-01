@@ -52,6 +52,7 @@ class CosineMatcher:
         self.faiss_min_gallery_size = faiss_min_gallery_size
         self._customer_gallery: list[GalleryEntry] = []
         self._employee_gallery: list[GalleryEntry] = []
+        self._gallery_by_id: dict[int, GalleryEntry] = {}
         self._recent_cache: dict[int, np.ndarray] = {}
         self._faiss = None
         self._faiss_ok = False
@@ -70,6 +71,7 @@ class CosineMatcher:
     def load_gallery(self, entries: list[GalleryEntry]) -> None:
         self._customer_gallery = [e for e in entries if e.person_kind == "customer"]
         self._employee_gallery = [e for e in entries if e.person_kind == "employee"]
+        self._gallery_by_id = {e.person_id: e for e in entries}
         self._recent_cache.clear()
         if self._faiss_ok and self._faiss is not None:
             total = len(self._customer_gallery) + len(self._employee_gallery)
@@ -84,8 +86,12 @@ class CosineMatcher:
             self._employee_gallery.append(entry)
         else:
             self._customer_gallery.append(entry)
+        self._gallery_by_id[entry.person_id] = entry
         if self.cache_recent:
             self._recent_cache[entry.person_id] = entry.embedding.copy()
+            if len(self._recent_cache) > 200:
+                first_key = next(iter(self._recent_cache))
+                self._recent_cache.pop(first_key, None)
         if self._faiss_ok and self._faiss is not None:
             all_entries = self._customer_gallery + self._employee_gallery
             if len(all_entries) >= self.faiss_min_gallery_size:
@@ -125,11 +131,17 @@ class CosineMatcher:
             if hit is not None:
                 if self.cache_recent:
                     self._recent_cache[hit.person_id] = emb
+                    if len(self._recent_cache) > 200:
+                        first_key = next(iter(self._recent_cache))
+                        self._recent_cache.pop(first_key, None)
                 return hit
 
         best = self._match_linear(emb, kinds)
         if best and self.cache_recent:
             self._recent_cache[best.person_id] = emb
+            if len(self._recent_cache) > 200:
+                first_key = next(iter(self._recent_cache))
+                self._recent_cache.pop(first_key, None)
         return best
 
     def _match_linear(
@@ -187,7 +199,4 @@ class CosineMatcher:
         return best
 
     def _find_entry(self, person_id: int) -> Optional[GalleryEntry]:
-        for entry in self._employee_gallery + self._customer_gallery:
-            if entry.person_id == person_id:
-                return entry
-        return None
+        return self._gallery_by_id.get(person_id)

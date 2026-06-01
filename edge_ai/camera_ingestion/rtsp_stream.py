@@ -66,6 +66,9 @@ class RTSPStream:
             return None
 
     def _open_capture(self) -> cv2.VideoCapture:
+        import os
+        # Enforce robust 5-second connect and read timeouts on RTSP ffmpeg capture to prevent silent thread hangs
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;5000000|timeout;5000000"
         cap = cv2.VideoCapture(self.source)
         if isinstance(self.source, str) and self.source.startswith("rtsp"):
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)

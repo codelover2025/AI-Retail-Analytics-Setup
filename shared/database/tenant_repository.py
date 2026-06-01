@@ -48,11 +48,11 @@ class TenantRepository:
         )
 
     def authenticate_edge_device(self, api_key: str) -> Optional[EdgeDevice]:
-        devices = list(self.db.scalars(select(EdgeDevice)).all())
-        for device in devices:
-            if verify_secret(api_key, device.api_key_hash):
-                return device
-        return None
+        from shared.security import hash_secret
+        hashed_key = hash_secret(api_key)
+        return self.db.scalar(
+            select(EdgeDevice).where(EdgeDevice.api_key_hash == hashed_key)
+        )
 
     def get_edge_device_with_store(self, device_id: uuid.UUID) -> Optional[EdgeDevice]:
         return self.db.scalar(

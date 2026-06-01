@@ -2,14 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  fetchCameras,
-  fetchCameraFootfall,
-  fetchDwellTime,
-  fetchInteractions,
-  fetchRepeatAnalytics,
-  fetchStoreFootfallAll,
-  fetchHeatmap,
-  fetchZones,
+  fetchMultiCameraSummary,
   type CameraListItem,
   type DwellTimeStats,
   type FootfallCameraResponse,
@@ -42,28 +35,15 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
     setLoading(true);
     setError(null);
     try {
-      const camList = await fetchCameras();
-      setCameras(camList);
-
-      const camParam = cameraId === "ALL" ? undefined : cameraId;
-      const [storeFf, camFf, dwellStats, zoneStats, repeatStats, ix, hm] =
-        await Promise.all([
-          fetchStoreFootfallAll(),
-          camParam ? fetchCameraFootfall(camParam) : Promise.resolve(null),
-          fetchDwellTime(camParam),
-          fetchZones(camParam),
-          fetchRepeatAnalytics(camParam),
-          fetchInteractions(camParam, 30),
-          fetchHeatmap(camParam),
-        ]);
-
-      setStoreFootfall(storeFf);
-      setCameraFootfall(camFf);
-      setDwell(dwellStats);
-      setZones(zoneStats);
-      setRepeat(repeatStats);
-      setInteractions(ix);
-      setHeatmap(hm);
+      const summary = await fetchMultiCameraSummary(cameraId);
+      setCameras(summary.cameras);
+      setStoreFootfall(summary.store_footfall);
+      setCameraFootfall(summary.camera_footfall);
+      setDwell(summary.dwell);
+      setZones(summary.zones);
+      setRepeat(summary.repeat);
+      setInteractions(summary.interactions);
+      setHeatmap(summary.heatmap);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load analytics");
     } finally {

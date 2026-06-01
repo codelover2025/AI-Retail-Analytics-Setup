@@ -62,12 +62,19 @@ class AnalyticsService:
         store_id: str | None,
         limit: int,
     ) -> list[RecognitionItem]:
-        rows = self.repo.get_recognitions(store_id=store_id, limit=limit)
+        stmt = (
+            select(Recognition, Visitor)
+            .join(Visitor, Recognition.visitor_id == Visitor.id)
+            .where(Recognition.brand_id == self.repo.brand_id)
+            .order_by(Recognition.recognized_at.desc())
+            .limit(limit)
+        )
+        if store_id:
+            stmt = stmt.where(Recognition.store_id == store_id)
+        
+        rows = self.db.execute(stmt).all()
         out: list[RecognitionItem] = []
-        for rec in rows:
-            visitor = self.db.get(Visitor, rec.visitor_id)
-            if not visitor:
-                continue
+        for rec, visitor in rows:
             rtype = _recognition_type(rec, visitor)
             out.append(
                 RecognitionItem(
