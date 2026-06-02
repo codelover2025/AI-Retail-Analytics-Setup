@@ -102,6 +102,30 @@ def ensure_identity_multi_tenant_columns() -> None:
         if "brand_id" not in fd_cols:
             statements.append("ALTER TABLE footfall_daily ADD COLUMN brand_id VARCHAR(36)" if is_sqlite() else "ALTER TABLE footfall_daily ADD COLUMN brand_id UUID")
 
+    # Visitors
+    if "visitors" in tables:
+        vis_cols = {col["name"] for col in insp.get_columns("visitors")}
+        if "brand_id" not in vis_cols:
+            statements.append("ALTER TABLE visitors ADD COLUMN brand_id VARCHAR(36)" if is_sqlite() else "ALTER TABLE visitors ADD COLUMN brand_id UUID")
+
+    # Recognitions (core pipeline logs)
+    if "recognitions" in tables:
+        rec_cols = {col["name"] for col in insp.get_columns("recognitions")}
+        if "brand_id" not in rec_cols:
+            statements.append("ALTER TABLE recognitions ADD COLUMN brand_id VARCHAR(36)" if is_sqlite() else "ALTER TABLE recognitions ADD COLUMN brand_id UUID")
+
+    # Live Visitors (active tracks)
+    if "live_visitors" in tables:
+        lv_cols = {col["name"] for col in insp.get_columns("live_visitors")}
+        if "brand_id" not in lv_cols:
+            statements.append("ALTER TABLE live_visitors ADD COLUMN brand_id VARCHAR(36)" if is_sqlite() else "ALTER TABLE live_visitors ADD COLUMN brand_id UUID")
+
+    # Alerts (notifications log)
+    if "alerts" in tables:
+        al_cols = {col["name"] for col in insp.get_columns("alerts")}
+        if "brand_id" not in al_cols:
+            statements.append("ALTER TABLE alerts ADD COLUMN brand_id VARCHAR(36)" if is_sqlite() else "ALTER TABLE alerts ADD COLUMN brand_id UUID")
+
     if statements:
         with engine.begin() as conn:
             for stmt in statements:
@@ -137,6 +161,26 @@ def ensure_identity_multi_tenant_columns() -> None:
             if "footfall_daily" in tables:
                 db.execute(
                     text("UPDATE footfall_daily SET brand_id = :brand_id WHERE brand_id IS NULL"),
+                    {"brand_id": brand_id_str if is_sqlite() else brand_id}
+                )
+            if "visitors" in tables:
+                db.execute(
+                    text("UPDATE visitors SET brand_id = :brand_id WHERE brand_id IS NULL"),
+                    {"brand_id": brand_id_str if is_sqlite() else brand_id}
+                )
+            if "recognitions" in tables:
+                db.execute(
+                    text("UPDATE recognitions SET brand_id = :brand_id WHERE brand_id IS NULL"),
+                    {"brand_id": brand_id_str if is_sqlite() else brand_id}
+                )
+            if "live_visitors" in tables:
+                db.execute(
+                    text("UPDATE live_visitors SET brand_id = :brand_id WHERE brand_id IS NULL"),
+                    {"brand_id": brand_id_str if is_sqlite() else brand_id}
+                )
+            if "alerts" in tables:
+                db.execute(
+                    text("UPDATE alerts SET brand_id = :brand_id WHERE brand_id IS NULL"),
                     {"brand_id": brand_id_str if is_sqlite() else brand_id}
                 )
             db.commit()
