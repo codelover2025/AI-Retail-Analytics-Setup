@@ -96,6 +96,12 @@ def ensure_identity_multi_tenant_columns() -> None:
         if "store_id" not in rec_cols:
             statements.append("ALTER TABLE person_recognitions ADD COLUMN store_id VARCHAR(64)")
 
+    # Footfall Daily
+    if "footfall_daily" in tables:
+        fd_cols = {col["name"] for col in insp.get_columns("footfall_daily")}
+        if "brand_id" not in fd_cols:
+            statements.append("ALTER TABLE footfall_daily ADD COLUMN brand_id VARCHAR(36)" if is_sqlite() else "ALTER TABLE footfall_daily ADD COLUMN brand_id UUID")
+
     if statements:
         with engine.begin() as conn:
             for stmt in statements:
@@ -127,6 +133,11 @@ def ensure_identity_multi_tenant_columns() -> None:
                 db.execute(
                     text("UPDATE person_recognitions SET store_id = :store_id WHERE store_id IS NULL"),
                     {"store_id": store_id}
+                )
+            if "footfall_daily" in tables:
+                db.execute(
+                    text("UPDATE footfall_daily SET brand_id = :brand_id WHERE brand_id IS NULL"),
+                    {"brand_id": brand_id_str if is_sqlite() else brand_id}
                 )
             db.commit()
         except Exception:
