@@ -24,6 +24,9 @@ def refresh_footfall_for_day(
 ) -> int:
     """Recompute footfall_daily_camera from analytics_sessions for one day."""
     repo = MultiCameraAnalyticsRepository(db, brand_id)
+    from datetime import time
+    day_start = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
+    day_end = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
     stmt = (
         select(
             AnalyticsSession.camera_id,
@@ -33,7 +36,8 @@ def refresh_footfall_for_day(
         .where(
             AnalyticsSession.brand_id == brand_id,
             AnalyticsSession.store_id == store_id,
-            func.date(AnalyticsSession.entry_time) == day,
+            AnalyticsSession.entry_time >= day_start,
+            AnalyticsSession.entry_time <= day_end,
         )
         .group_by(AnalyticsSession.camera_id, AnalyticsSession.person_id)
     )
@@ -54,6 +58,8 @@ def refresh_footfall_for_day(
             # A person is a repeat visitor on this camera today if:
             # 1. They visited this camera in the past (prior to today) OR
             # 2. They visited this camera more than once today
+            from datetime import time
+            day_start = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
             prior_count = db.scalar(
                 select(func.count())
                 .select_from(AnalyticsSession)
@@ -62,7 +68,7 @@ def refresh_footfall_for_day(
                     AnalyticsSession.store_id == store_id,
                     AnalyticsSession.camera_id == cam,
                     AnalyticsSession.person_id == person_id,
-                    func.date(AnalyticsSession.entry_time) < day,
+                    AnalyticsSession.entry_time < day_start,
                 )
             ) or 0
             if prior_count > 0 or visits > 1:
@@ -91,7 +97,9 @@ def upsert_footfall_on_session(
     repo = MultiCameraAnalyticsRepository(db, brand_id)
     row = repo.get_or_create_footfall_row(store_id=store_id, camera_id=camera_id, day=day)
 
-    # Count how many sessions this person has had today on this camera (including the one just added).
+    from datetime import time
+    day_start = datetime.combine(day, time.min).replace(tzinfo=timezone.utc)
+    day_end = datetime.combine(day, time.max).replace(tzinfo=timezone.utc)
     count_today = db.scalar(
         select(func.count())
         .select_from(AnalyticsSession)
@@ -100,7 +108,8 @@ def upsert_footfall_on_session(
             AnalyticsSession.person_id == person_id,
             AnalyticsSession.camera_id == camera_id,
             AnalyticsSession.store_id == store_id,
-            func.date(AnalyticsSession.entry_time) == day,
+            AnalyticsSession.entry_time >= day_start,
+            AnalyticsSession.entry_time <= day_end,
         )
     ) or 1
 

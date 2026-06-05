@@ -22,9 +22,9 @@ class IdentityEmployeeService:
         self.settings = settings or get_settings()
 
     def list_employees(
-        self, limit: int = 200, *, active_only: bool = True
+        self, brand_id: uuid.UUID, limit: int = 200, *, active_only: bool = True
     ) -> list[EmployeeOut]:
-        stmt = select(Employee).order_by(Employee.created_at.desc()).limit(limit)
+        stmt = select(Employee).where(Employee.brand_id == brand_id).order_by(Employee.created_at.desc()).limit(limit)
         if active_only:
             stmt = stmt.where(Employee.active.is_(True))
         rows = self.db.execute(stmt).scalars().all()
@@ -36,19 +36,21 @@ class IdentityEmployeeService:
             raise HTTPException(status_code=404, detail="Employee not found")
         return emp
 
-    def create_employee(self, payload: EmployeeCreateIn) -> EmployeeOut:
+    def create_employee(self, brand_id: uuid.UUID, payload: EmployeeCreateIn) -> EmployeeOut:
         emp_id = uuid.UUID(payload.id) if payload.id else uuid.uuid4()
         existing = self.db.get(Employee, emp_id)
 
         if existing is None:
             existing = Employee(
                 id=emp_id,
+                brand_id=brand_id,
                 name=payload.name,
                 embedding=payload.embedding,
                 active=True,
             )
             self.db.add(existing)
         else:
+            existing.brand_id = brand_id
             existing.name = payload.name
             existing.embedding = payload.embedding
             existing.active = True
@@ -68,6 +70,7 @@ class IdentityEmployeeService:
     def create_employee_from_images(
         self,
         *,
+        brand_id: uuid.UUID,
         name: str,
         files: list,
         employee_id: uuid.UUID | None = None,
@@ -78,15 +81,19 @@ class IdentityEmployeeService:
             name=name,
             embedding=embedding,
         )
-        return self.create_employee(payload)
+        return self.create_employee(brand_id, payload)
 
-    def re_enroll_from_images(self, employee_id: uuid.UUID, files: list) -> EmployeeOut:
+    def re_enroll_from_images(self, employee_id: uuid.UUID, brand_id: uuid.UUID, files: list) -> EmployeeOut:
         emp = self.get_employee(employee_id)
+        if emp.brand_id is not None and emp.brand_id != brand_id:
+            raise HTTPException(status_code=404, detail="Employee not found")
         if not emp.active:
             raise HTTPException(status_code=400, detail="Employee is inactive")
         embedding = embedding_from_upload(files)
         emp.embedding = embedding
         emp.updated_at = _utcnow()
+        if emp.brand_id is None:
+            emp.brand_id = brand_id
         upsert_employee_visitor(
             self.db,
             self.settings,
@@ -99,14 +106,18 @@ class IdentityEmployeeService:
         return self._to_out(emp)
 
     def update_employee(
-        self, employee_id: uuid.UUID, payload: EmployeeUpdateIn
+        self, employee_id: uuid.UUID, brand_id: uuid.UUID, payload: EmployeeUpdateIn
     ) -> EmployeeOut:
         emp = self.get_employee(employee_id)
+        if emp.brand_id is not None and emp.brand_id != brand_id:
+            raise HTTPException(status_code=404, detail="Employee not found")
         if payload.name is not None:
             emp.name = payload.name
         if payload.active is not None:
             emp.active = payload.active
         emp.updated_at = _utcnow()
+        if emp.brand_id is None:
+            emp.brand_id = brand_id
         if emp.active:
             upsert_employee_visitor(
                 self.db,

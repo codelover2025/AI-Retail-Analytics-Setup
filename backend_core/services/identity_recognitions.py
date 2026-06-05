@@ -18,10 +18,11 @@ class IdentityRecognitionService:
         self.db = db
         self.customers = IdentityCustomerService(db)
 
-    def list_recognitions(self, limit: int = 500) -> list[RecognitionOut]:
+    def list_recognitions(self, brand_id: uuid.UUID, limit: int = 500) -> list[RecognitionOut]:
         rows = (
             self.db.execute(
                 select(PersonRecognition)
+                .where(PersonRecognition.brand_id == brand_id)
                 .order_by(PersonRecognition.timestamp.desc())
                 .limit(limit)
             )
@@ -42,11 +43,15 @@ class IdentityRecognitionService:
     def list_recognitions_for_person_id(
         self,
         person_id: uuid.UUID,
+        brand_id: uuid.UUID,
         *,
         limit: int = 500,
         repeat_only: bool = False,
     ) -> list[RecognitionOut]:
-        stmt = select(PersonRecognition).where(PersonRecognition.person_id == person_id)
+        stmt = select(PersonRecognition).where(
+            PersonRecognition.person_id == person_id,
+            PersonRecognition.brand_id == brand_id,
+        )
         if repeat_only:
             stmt = stmt.where(PersonRecognition.type == "repeat_visitor")
         stmt = stmt.order_by(PersonRecognition.timestamp.desc()).limit(limit)
@@ -63,7 +68,7 @@ class IdentityRecognitionService:
             for r in rows
         ]
 
-    def ingest(self, payload: RecognitionIngest) -> RecognitionOut:
+    def ingest(self, brand_id: uuid.UUID, payload: RecognitionIngest) -> RecognitionOut:
         person_id = uuid.UUID(payload.person_id)
         ts = payload.timestamp
         if ts.tzinfo is None:
@@ -75,12 +80,15 @@ class IdentityRecognitionService:
                 self.db.add(
                     Employee(
                         id=person_id,
+                        brand_id=brand_id,
                         name=f"Employee {str(person_id)[:8]}",
                         embedding=payload.embedding,
                     )
                 )
+            elif emp is not None and emp.brand_id is None:
+                emp.brand_id = brand_id
         elif payload.type != "employee":
-            cust = self.customers.upsert_from_recognition(person_id, ts)
+            cust = self.customers.upsert_from_recognition(person_id, brand_id, ts)
             if payload.embedding and payload.type in ("customer", "new_visitor", "repeat_visitor"):
                 self.db.add(
                     FaceEmbedding(
@@ -91,6 +99,7 @@ class IdentityRecognitionService:
 
         rec = PersonRecognition(
             person_id=person_id,
+            brand_id=brand_id,
             type=payload.type,
             timestamp=ts,
             camera_id=payload.camera_id,

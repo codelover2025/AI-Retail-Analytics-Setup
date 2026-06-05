@@ -60,13 +60,8 @@ class PersonGalleryStore:
     def get_visitor(self, visitor_id: uuid.UUID) -> Optional[Visitor]:
         return self.db.get(Visitor, visitor_id)
 
-    def allocate_person_id(self) -> int:
-        from sqlalchemy import func, select, Integer
-        stmt = select(
-            func.max(func.cast(Visitor.metadata_["person_id"].as_string(), Integer))
-        ).where(Visitor.brand_id == self.brand_id)
-        max_id = self.db.scalar(stmt)
-        return (max_id or 0) + 1
+    def allocate_person_id(self, visitor_uuid: uuid.UUID) -> int:
+        return int(visitor_uuid.int % (10**9))
 
     def register_person(
         self,
@@ -75,13 +70,14 @@ class PersonGalleryStore:
         person_kind: str = PERSON_KIND_CUSTOMER,
         display_name: Optional[str] = None,
     ) -> Visitor:
-        person_id = self.allocate_person_id()
-        if display_name is None:
-            display_name = f"Person-{person_id}"
         visitor = self.repo.register_visitor(
             embedding=embedding,
-            display_name=display_name,
+            display_name="",
         )
+        person_id = self.allocate_person_id(visitor.id)
+        if display_name is None:
+            display_name = f"Person-{person_id}"
+        visitor.display_name = display_name
         visitor.metadata_ = {
             META_PERSON_ID: person_id,
             META_PERSON_KIND: person_kind,

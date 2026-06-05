@@ -68,7 +68,9 @@ class CameraWorkerGroup:
         self._db = SessionLocal()
         self._shared_matcher = None
         self._frames_processed = 0
+        self._dropped_frames = 0
         self._last_batch = time.monotonic()
+        self._last_gallery_sync = time.monotonic()
 
     def _ensure_processors(self) -> None:
         if self._processors:
@@ -167,6 +169,7 @@ class CameraWorkerGroup:
                 try:
                     self._queue.put(job, timeout=2.0)
                 except queue.Full:
+                    self._dropped_frames += 1
                     logger.warning(
                         "Worker %d queue full; dropping frame %s",
                         self.worker_id,
@@ -177,8 +180,25 @@ class CameraWorkerGroup:
         finally:
             stream.stop()
 
+    def _sync_matcher_gallery(self) -> None:
+        if not self._shared_matcher:
+            return
+        from edge_ai.pipeline.identity_service import IdentityService
+        IdentityService(
+            self._db,
+            self.settings,
+            self.brand_id,
+            matcher=self._shared_matcher,
+            refresh_gallery=True,
+        )
+
     def _processor_loop(self) -> None:
+        sync_interval = self.settings.analytics_batch_interval_seconds
         while self._running:
+            if time.monotonic() - self._last_gallery_sync >= sync_interval:
+                self._sync_matcher_gallery()
+                self._last_gallery_sync = time.monotonic()
+
             try:
                 job = self._queue.get(timeout=0.5)
             except queue.Empty:
@@ -206,3 +226,7 @@ class CameraWorkerGroup:
     @property
     def frames_processed(self) -> int:
         return self._frames_processed
+
+    @property
+    def dropped_frames(self) -> int:
+        return self._dropped_frames

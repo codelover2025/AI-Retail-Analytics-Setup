@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database.models import Base
@@ -13,6 +13,9 @@ from shared.database.types import JSONCol
 
 class Customer(Base):
     __tablename__ = "customers"
+    __table_args__ = (
+        Index("ix_customers_brand_last_seen", "brand_id", "last_seen"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -27,6 +30,9 @@ class Customer(Base):
 
 class Employee(Base):
     __tablename__ = "employees"
+    __table_args__ = (
+        Index("ix_employees_brand_active", "brand_id", "active"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -50,6 +56,9 @@ class PersonRecognition(Base):
     """AI recognition log — exposed via GET /api/recognitions."""
 
     __tablename__ = "person_recognitions"
+    __table_args__ = (
+        Index("ix_person_recognitions_brand_store_timestamp", "brand_id", "store_id", "timestamp"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -64,6 +73,9 @@ class PersonRecognition(Base):
 
 class FaceEmbedding(Base):
     __tablename__ = "face_embeddings"
+    __table_args__ = (
+        Index("ix_face_embeddings_customer_id", "customer_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4

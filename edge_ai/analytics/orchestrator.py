@@ -90,10 +90,12 @@ class MultiCameraAnalyticsOrchestrator:
                 if not any(w._running for w in self._workers):
                     break
                 total_frames = sum(w.frames_processed for w in self._workers)
+                total_dropped = sum(w.dropped_frames for w in self._workers)
                 elapsed = max(time.monotonic() - t0, 1e-6)
                 self._cloud.update_metrics(
                     cameras_active=len(self.cameras),
                     fps_avg=total_frames / elapsed,
+                    extra={"dropped_frames": total_dropped},
                 )
                 time.sleep(1.0)
         finally:

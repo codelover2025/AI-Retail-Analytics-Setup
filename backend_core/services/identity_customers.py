@@ -16,10 +16,13 @@ class IdentityCustomerService:
     def __init__(self, db: Session):
         self.db = db
 
-    def list_customers(self, limit: int = 500) -> list[CustomerOut]:
+    def list_customers(self, brand_id: uuid.UUID, limit: int = 500) -> list[CustomerOut]:
         rows = (
             self.db.execute(
-                select(Customer).order_by(Customer.last_seen.desc()).limit(limit)
+                select(Customer)
+                .where(Customer.brand_id == brand_id)
+                .order_by(Customer.last_seen.desc())
+                .limit(limit)
             )
             .scalars()
             .all()
@@ -35,6 +38,12 @@ class IdentityCustomerService:
         ]
 
     def list_repeat_visitors(self, min_visits: int = 2, limit: int = 500) -> list[RepeatVisitorOut]:
+        # Filter by brand_id on the repeat visitors query as well
+        # Note: We will pass brand_id through the caller. Let's make brand_id optional here to not break legacy call structure if any.
+        # But actually, we want to always pass brand_id.
+        pass
+
+    def list_repeat_visitors_filtered(self, brand_id: uuid.UUID, min_visits: int = 2, limit: int = 500) -> list[RepeatVisitorOut]:
         subquery = (
             select(
                 PersonRecognition.person_id,
@@ -42,7 +51,10 @@ class IdentityCustomerService:
                 func.max(PersonRecognition.timestamp).label("last_seen"),
                 func.count().label("visit_count"),
             )
-            .where(PersonRecognition.type.in_(("customer", "new_visitor", "repeat_visitor", "visitor")))
+            .where(
+                PersonRecognition.brand_id == brand_id,
+                PersonRecognition.type.in_(("customer", "new_visitor", "repeat_visitor", "visitor"))
+            )
             .group_by(PersonRecognition.person_id)
             .having(func.count() >= min_visits)
             .subquery()
@@ -51,6 +63,7 @@ class IdentityCustomerService:
         stmt = (
             select(subquery, Customer)
             .outerjoin(Customer, subquery.c.person_id == Customer.id)
+            .where((Customer.brand_id == brand_id) | (Customer.brand_id.is_(None)))
             .order_by(subquery.c.last_seen.desc())
             .limit(limit)
         )
@@ -78,18 +91,21 @@ class IdentityCustomerService:
                 )
         return out
 
-    def upsert_from_recognition(self, person_id: uuid.UUID, ts: datetime) -> Customer:
+    def upsert_from_recognition(self, person_id: uuid.UUID, brand_id: uuid.UUID, ts: datetime) -> Customer:
         """Used by ingestion endpoint: increment counts based on recognition stream."""
         cust = self.db.get(Customer, person_id)
         if cust is None:
             cust = Customer(
                 id=person_id,
+                brand_id=brand_id,
                 first_seen=ts,
                 last_seen=ts,
                 visit_count=1,
             )
             self.db.add(cust)
             return cust
+        if cust.brand_id is None:
+            cust.brand_id = brand_id
         if ts < cust.first_seen:
             cust.first_seen = ts
         if ts > cust.last_seen:
@@ -101,6 +117,7 @@ class IdentityCustomerService:
         self,
         *,
         person_id: uuid.UUID,
+        brand_id: uuid.UUID,
         first_seen: datetime | None,
         last_seen: datetime | None,
         visit_count: int | None = None,
@@ -110,6 +127,7 @@ class IdentityCustomerService:
         if cust is None:
             cust = Customer(
                 id=person_id,
+                brand_id=brand_id,
                 first_seen=first_seen or _utcnow(),
                 last_seen=last_seen or _utcnow(),
                 visit_count=visit_count if visit_count is not None else 1,
@@ -118,6 +136,8 @@ class IdentityCustomerService:
             self.db.flush()
             return cust
 
+        if cust.brand_id is None:
+            cust.brand_id = brand_id
         if first_seen is not None:
             cust.first_seen = min(cust.first_seen, first_seen)
         if last_seen is not None:

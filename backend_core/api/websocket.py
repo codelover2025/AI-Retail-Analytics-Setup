@@ -36,8 +36,16 @@ async def _redis_listener(websocket: WebSocket, redis_url: str, store_id: str) -
     channel = f"alerts:{store_id}"
     await pubsub.subscribe(channel)
 
+    async def receive_loop():
+        try:
+            while True:
+                await websocket.receive()
+        except Exception:
+            pass
+
+    receive_task = asyncio.create_task(receive_loop())
     try:
-        while True:
+        while not receive_task.done():
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message and message.get("type") == "message":
                 await websocket.send_text(message["data"])
@@ -45,6 +53,7 @@ async def _redis_listener(websocket: WebSocket, redis_url: str, store_id: str) -
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     finally:
+        receive_task.cancel()
         await pubsub.unsubscribe(channel)
         await client.close()
 

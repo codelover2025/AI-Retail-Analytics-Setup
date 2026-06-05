@@ -103,6 +103,7 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+    init_db()
     settings = get_settings()
     cameras = load_camera_sources(settings)
     if settings.multi_camera_enabled or len(cameras) > 1:

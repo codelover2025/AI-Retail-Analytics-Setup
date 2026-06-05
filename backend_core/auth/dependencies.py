@@ -30,7 +30,10 @@ def verify_dashboard_api_key(
     settings: Settings = Depends(get_settings),
 ) -> None:
     if not settings.api_key:
-        return
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Security misconfiguration: Server API key is not set",
+        )
     provided = _resolve_dashboard_api_key(x_api_key, api_key)
     if provided != settings.api_key:
         raise HTTPException(

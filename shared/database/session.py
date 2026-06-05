@@ -9,6 +9,7 @@ from shared.config import get_settings
 from shared.database.models import Base
 from shared.database import audit_models  # noqa: F401
 from shared.database import tenant_models  # noqa: F401 — register tenant tables
+from shared.database import demographics_models  # noqa: F401 — register demographics tables
 
 settings = get_settings()
 
@@ -25,11 +26,19 @@ def _build_engine():
                 if not db_path.is_absolute():
                     db_path = Path.cwd() / db_path
                 db_path.parent.mkdir(parents=True, exist_ok=True)
-        kwargs["connect_args"] = {"check_same_thread": False}
+        kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
+        engine = create_engine(url, **kwargs)
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("PRAGMA journal_mode=WAL"))
+        except Exception:
+            pass
+        return engine
     else:
-        kwargs["pool_size"] = 5
-        kwargs["max_overflow"] = 10
+        kwargs["pool_size"] = 20
+        kwargs["max_overflow"] = 50
     return create_engine(url, **kwargs)
+
 
 
 engine = _build_engine()

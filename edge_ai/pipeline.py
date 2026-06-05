@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 from typing import Optional
+from sqlalchemy.orm import Session
 
 from edge_ai.alert_engine.events import AlertEngine
 from edge_ai.camera_ingestion.camera_config import load_camera_sources
@@ -58,15 +59,16 @@ class RetailAnalyticsPipeline:
         self._cloud = EdgeCloudClient(self.settings)
         self._frames_processed = 0
         self._t0: Optional[float] = None
+        self._last_gallery_sync = 0.0
 
     def run(self, max_frames: Optional[int] = None) -> None:
-        init_db()
         db = SessionLocal()
         try:
             self._brand_id = resolve_brand_id(db, self.settings)
             db.commit()
         finally:
             db.close()
+
 
         self._cloud.fetch_config()
         self._cloud.start_heartbeat_loop()
@@ -83,6 +85,7 @@ class RetailAnalyticsPipeline:
             self.settings.backend_url,
         )
 
+        db = SessionLocal()
         try:
             while self._running:
                 packet = self.stream.read(timeout=1.0)
@@ -92,7 +95,7 @@ class RetailAnalyticsPipeline:
                 if packet.frame_index % (self.frame_skip + 1) != 0:
                     continue
 
-                self._process_frame(packet.frame)
+                self._process_frame(packet.frame, db)
                 self._frames_processed += 1
                 self._cloud.update_metrics(
                     cameras_active=1,
@@ -104,6 +107,7 @@ class RetailAnalyticsPipeline:
         finally:
             self.stream.stop()
             self._cloud.stop()
+            db.close()
             logger.info("Pipeline stopped after %d frames", self._frames_processed)
 
     def stop(self) -> None:
@@ -121,15 +125,25 @@ class RetailAnalyticsPipeline:
                 return self.face_processor.process_frame(frame)
         return self.face_processor.process_frame(frame)
 
-    def _process_frame(self, frame) -> None:
+    def _process_frame(self, frame, db: Optional[Session] = None) -> None:
         detections = self._detect(frame)
         tracked = self.tracker.update(detections)
 
-        db = SessionLocal()
+        close_db = False
+        if db is None:
+            db = SessionLocal()
+            close_db = True
         try:
             brand_id = self._brand_id or resolve_brand_id(db, self.settings)
             repo = AnalyticsRepository(db, self.settings, brand_id)
-            refresh_gallery = self._shared_matcher is None
+            
+            now_t = time.monotonic()
+            refresh_gallery = (self._shared_matcher is None) or (
+                now_t - self._last_gallery_sync >= self.settings.analytics_batch_interval_seconds
+            )
+            if refresh_gallery:
+                self._last_gallery_sync = now_t
+
             identity = IdentityService(
                 db,
                 self.settings,
@@ -214,7 +228,8 @@ class RetailAnalyticsPipeline:
             db.rollback()
             logger.exception("Frame processing failed")
         finally:
-            db.close()
+            if close_db:
+                db.close()
 
 
 def main() -> None:
@@ -222,6 +237,7 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+    init_db()
     settings = get_settings()
     cameras = load_camera_sources(settings)
 

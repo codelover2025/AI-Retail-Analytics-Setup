@@ -505,17 +505,10 @@ class MultiCameraAnalyticsService:
     def _increment_demographics(
         self, *, store_id: str, day: date, age_bucket: str, gender: str
     ) -> None:
-        row = self.db.scalar(
-            select(DemographicsDaily).where(
-                DemographicsDaily.brand_id == self.brand_id,
-                DemographicsDaily.store_id == store_id,
-                DemographicsDaily.day == day,
-                DemographicsDaily.age_bucket == age_bucket,
-                DemographicsDaily.gender == gender,
-            )
-        )
-        if row is None:
-            row = DemographicsDaily(
+        is_sqlite_db = self.db.bind.dialect.name == "sqlite"
+        if is_sqlite_db:
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+            stmt = sqlite_insert(DemographicsDaily).values(
                 brand_id=self.brand_id,
                 store_id=store_id,
                 day=day,
@@ -523,6 +516,23 @@ class MultiCameraAnalyticsService:
                 gender=gender,
                 count=1,
             )
-            self.db.add(row)
+            upsert_stmt = stmt.on_conflict_do_update(
+                index_elements=["brand_id", "store_id", "day", "age_bucket", "gender"],
+                set_={"count": DemographicsDaily.count + 1, "updated_at": func.now()}
+            )
+            self.db.execute(upsert_stmt)
         else:
-            row.count += 1
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            stmt = pg_insert(DemographicsDaily).values(
+                brand_id=self.brand_id,
+                store_id=store_id,
+                day=day,
+                age_bucket=age_bucket,
+                gender=gender,
+                count=1,
+            )
+            upsert_stmt = stmt.on_conflict_do_update(
+                constraint="uq_demographics_daily_keys",
+                set_={"count": DemographicsDaily.count + 1, "updated_at": func.now()}
+            )
+            self.db.execute(upsert_stmt)

@@ -87,7 +87,38 @@ class MultiCameraAnalyticsRepository:
     def get_or_create_footfall_row(
         self, *, store_id: str, camera_id: str, day: date
     ) -> FootfallDailyCamera:
-        row = self.db.scalar(
+        is_sqlite_db = self.db.bind.dialect.name == "sqlite"
+        if is_sqlite_db:
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+            stmt = sqlite_insert(FootfallDailyCamera).values(
+                brand_id=self.brand_id,
+                store_id=store_id,
+                camera_id=camera_id,
+                day=day,
+                total_visitors=0,
+                repeat_visitors=0,
+            )
+            upsert_stmt = stmt.on_conflict_do_nothing(
+                index_elements=["brand_id", "store_id", "camera_id", "day"]
+            )
+            self.db.execute(upsert_stmt)
+        else:
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            stmt = pg_insert(FootfallDailyCamera).values(
+                brand_id=self.brand_id,
+                store_id=store_id,
+                camera_id=camera_id,
+                day=day,
+                total_visitors=0,
+                repeat_visitors=0,
+            )
+            upsert_stmt = stmt.on_conflict_do_nothing(
+                constraint="uq_footfall_camera_brand_store_cam_day"
+            )
+            self.db.execute(upsert_stmt)
+        self.db.flush()
+
+        return self.db.scalar(
             select(FootfallDailyCamera).where(
                 FootfallDailyCamera.brand_id == self.brand_id,
                 FootfallDailyCamera.store_id == store_id,
@@ -95,19 +126,6 @@ class MultiCameraAnalyticsRepository:
                 FootfallDailyCamera.day == day,
             )
         )
-        if row is not None:
-            return row
-        row = FootfallDailyCamera(
-            brand_id=self.brand_id,
-            store_id=store_id,
-            camera_id=camera_id,
-            day=day,
-            total_visitors=0,
-            repeat_visitors=0,
-        )
-        self.db.add(row)
-        self.db.flush()
-        return row
 
     def count_sessions_for_person_camera(
         self, *, person_id: str, camera_id: str, store_id: str, before: datetime
