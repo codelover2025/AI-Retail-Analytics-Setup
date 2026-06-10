@@ -188,3 +188,52 @@ def ensure_identity_multi_tenant_columns() -> None:
             db.rollback()
             pass
 
+
+def ensure_phase4_columns() -> None:
+    """
+    Additive Phase 4 migrations — idempotent, safe to re-run.
+
+    Creates Phase 4 tables if missing and patches any new columns
+    onto tables that may have been created before Phase 4.
+    """
+    from shared.database.session import engine, is_sqlite
+
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+
+    # Ensure all Phase 4 models are registered before create_all
+    import shared.database.report_models  # noqa: F401
+    import shared.database.alert_rule_models  # noqa: F401
+    import shared.database.rbac_models  # noqa: F401
+    from shared.database.models import Base
+
+    Base.metadata.create_all(bind=engine)
+
+    # Patch analytics_sessions with Phase 4 demographic columns
+    if "analytics_sessions" in existing_tables:
+        cols = {c["name"] for c in insp.get_columns("analytics_sessions")}
+        stmts = []
+        if "identity_type" not in cols:
+            stmts.append("ALTER TABLE analytics_sessions ADD COLUMN identity_type VARCHAR(32)")
+        if "age_bucket" not in cols:
+            stmts.append("ALTER TABLE analytics_sessions ADD COLUMN age_bucket VARCHAR(32)")
+        if "gender" not in cols:
+            stmts.append("ALTER TABLE analytics_sessions ADD COLUMN gender VARCHAR(16)")
+        if stmts:
+            with engine.begin() as conn:
+                for s in stmts:
+                    conn.execute(text(s))
+
+    # Patch alerts table with camera_id and rule_id
+    if "alerts" in existing_tables:
+        cols = {c["name"] for c in insp.get_columns("alerts")}
+        stmts = []
+        if "camera_id" not in cols:
+            stmts.append("ALTER TABLE alerts ADD COLUMN camera_id VARCHAR(64)")
+        if "rule_id" not in cols:
+            col_type = "VARCHAR(36)" if is_sqlite() else "UUID"
+            stmts.append(f"ALTER TABLE alerts ADD COLUMN rule_id {col_type}")
+        if stmts:
+            with engine.begin() as conn:
+                for s in stmts:
+                    conn.execute(text(s))

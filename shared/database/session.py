@@ -10,6 +10,10 @@ from shared.database.models import Base
 from shared.database import audit_models  # noqa: F401
 from shared.database import tenant_models  # noqa: F401 — register tenant tables
 from shared.database import demographics_models  # noqa: F401 — register demographics tables
+# Phase 4 models — registered so create_all includes them
+from shared.database import report_models  # noqa: F401
+from shared.database import alert_rule_models  # noqa: F401
+from shared.database import rbac_models  # noqa: F401
 
 settings = get_settings()
 

@@ -78,6 +78,49 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
+    # Phase 4 — Dashboard / Aggregation
+    dashboard_cache_ttl_seconds: int = 300
+    max_store_comparison: int = 10
+
+    # Phase 4 — WhatsApp Business
+    whatsapp_provider: str = "meta"  # meta | stub
+    whatsapp_phone_number_id: Optional[str] = None
+    whatsapp_access_token: Optional[str] = None
+    whatsapp_api_version: str = "v19.0"
+
+    # Phase 4 — Email delivery
+    email_provider: str = "smtp"  # smtp | sendgrid | ses
+    smtp_host: Optional[str] = None
+    smtp_port: int = 587
+    smtp_user: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_address: str = "noreply@example.com"
+    sendgrid_api_key: Optional[str] = None
+
+    # Phase 4 — HRMS Integration
+    hrms_provider: Optional[str] = None  # generic | stub
+    hrms_api_url: Optional[str] = None
+    hrms_api_key: Optional[str] = None
+
+    # Phase 4 — POS Integration
+    pos_provider: Optional[str] = None  # generic | stub
+    pos_api_url: Optional[str] = None
+    pos_api_key: Optional[str] = None
+
+    # Phase 4 — CRM Integration
+    crm_provider: Optional[str] = None  # generic | stub
+    crm_api_url: Optional[str] = None
+    crm_api_key: Optional[str] = None
+
+    # Phase 4 — Reporting
+    reports_output_dir: str = "./data/reports"
+    report_max_concurrent: int = 3
+
+    # Phase 4 — Logging / Observability
+    log_level: str = "INFO"
+    log_format: str = "json"  # json | text
+    app_env: str = "development"  # development | staging | production
+
 
 @lru_cache
 def get_settings() -> Settings:

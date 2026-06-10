@@ -19,6 +19,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   backend-core:
     build:
@@ -33,7 +38,13 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   edge-ai:
     build:
@@ -48,7 +59,7 @@ services:
       postgres:
         condition: service_healthy
       backend-core:
-        condition: service_started
+        condition: service_healthy
     # Uncomment for GPU hosts
     # deploy:
     #   resources:
