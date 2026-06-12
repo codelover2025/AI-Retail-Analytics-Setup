@@ -37,13 +37,13 @@ export function useMultiCameraAnalytics(cameraId: CameraFilter) {
     try {
       const summary = await fetchMultiCameraSummary(cameraId);
       setCameras(summary.cameras);
-      setStoreFootfall(summary.store_footfall);
-      setCameraFootfall(summary.camera_footfall);
-      setDwell(summary.dwell);
-      setZones(summary.zones);
-      setRepeat(summary.repeat);
-      setInteractions(summary.interactions);
-      setHeatmap(summary.heatmap);
+      setStoreFootfall(summary.store_footfall ?? null);
+      setCameraFootfall(summary.camera_footfall ?? null);
+      setDwell(summary.dwell ?? null);
+      setZones(summary.zones ?? null);
+      setRepeat(summary.repeat ?? null);
+      setInteractions(summary.interactions ?? null);
+      setHeatmap(summary.heatmap ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load analytics");
     } finally {

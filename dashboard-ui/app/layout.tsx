@@ -3,8 +3,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Orzen Vision — Store Analytics",
-  description: "Retail AI analytics dashboard",
+  title: "Orzen Vision — Enterprise Analytics",
+  description: "Enterprise retail AI analytics — multi-store, realtime, reports",
   icons: {
     icon: "/branding/orzen-icon.png",
     apple: "/branding/orzen-icon.png",
