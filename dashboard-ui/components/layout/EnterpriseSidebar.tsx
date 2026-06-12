@@ -12,10 +12,13 @@ import {
   ClipboardList,
   FileText,
   Flame,
+  GitFork,
   LayoutDashboard,
   Link2,
+  LogOut,
   Radio,
   Repeat,
+  Settings2,
   Shield,
   Store,
   UserCircle,
@@ -24,6 +27,7 @@ import {
 } from "lucide-react";
 import { OrzenLogo } from "@/components/OrzenLogo";
 import { ThemeToggle } from "@/components/enterprise/ThemeToggle";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 type NavSection = { title: string; items: NavItem[] };
@@ -43,6 +47,7 @@ const sections: NavSection[] = [
       { href: "/realtime", label: "Realtime", icon: Radio },
       { href: "/multi-camera", label: "Multi-camera", icon: Cctv },
       { href: "/heatmap", label: "Heatmap", icon: Flame },
+      { href: "/journey", label: "Journey mapping", icon: GitFork },
     ],
   },
   {
@@ -64,6 +69,7 @@ const sections: NavSection[] = [
       { href: "/integrations", label: "Integrations", icon: Link2 },
       { href: "/admin", label: "Admin", icon: Building2 },
       { href: "/admin/roles", label: "Roles & RBAC", icon: Shield },
+      { href: "/settings", label: "Settings", icon: Settings2 },
     ],
   },
   {
@@ -129,6 +135,8 @@ function MobileNav() {
 }
 
 export function EnterpriseSidebar() {
+  const { user, logout } = useAuth();
+
   return (
     <>
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
@@ -150,9 +158,26 @@ export function EnterpriseSidebar() {
             </div>
           ))}
         </nav>
-        <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-          Orzen Vision · Enterprise
-        </p>
+        {/* User + logout */}
+        <div className="border-t border-border px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-foreground">
+                {user?.email ?? "—"}
+              </p>
+              <p className="text-[10px] capitalize text-muted-foreground">
+                {user?.role?.replace("_", " ") ?? ""}
+              </p>
+            </div>
+            <button
+              onClick={logout}
+              aria-label="Sign out"
+              className="ml-2 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive/40"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </aside>
 
       <header className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-card px-4 md:hidden">

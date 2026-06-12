@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend_core.auth.dependencies import get_tenant_optional
+from backend_core.auth.rbac import UserContext, require_role
 from backend_core.services.heatmap_service import HeatmapService
 from shared.config import get_settings
 from shared.database.session import get_db
@@ -37,6 +38,7 @@ def zone_heatmap(
     days: int = Query(default=7, ge=1, le=90),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """
     Returns per-zone intensity values weighted by total dwell time.
@@ -53,6 +55,7 @@ def occupancy_heatmap(
     days: int = Query(default=7, ge=1, le=90),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """Intensity weighted by visit count — shows highest traffic zones."""
     return _svc(db, tenant, store_id).zone_occupancy(camera_id=camera_id, days=days)
@@ -65,6 +68,7 @@ def dwell_heatmap(
     days: int = Query(default=7, ge=1, le=90),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """Intensity = average dwell per visit; shows zones where visitors linger."""
     return _svc(db, tenant, store_id).dwell_heatmap(camera_id=camera_id, days=days)
@@ -78,6 +82,7 @@ def hourly_heatmap(
     days: int = Query(default=7, ge=1, le=90),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """
     Returns 24 hourly buckets with normalized intensity.

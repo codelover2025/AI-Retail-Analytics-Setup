@@ -166,6 +166,7 @@ def get_demographics(
 
 
 @router.get("/multi-camera/summary", response_model=MultiCameraSummaryResponse)
+@router.get("/v1/analytics/multi-camera/summary", response_model=MultiCameraSummaryResponse)
 def get_multi_camera_summary(
     camera_id: Optional[str] = Query(default=None),
     tenant: TenantContext = Depends(get_tenant_optional),

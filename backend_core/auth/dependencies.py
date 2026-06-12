@@ -51,17 +51,48 @@ def get_tenant_from_jwt(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bearer token required")
     try:
         payload = decode_access_token(settings, credentials.credentials)
-        brand_id = uuid.UUID(payload["brand_id"])
-        brand_slug = payload["brand_slug"]
+        brand_id_str = payload.get("brand_id")
+        brand_slug = payload.get("brand_slug")
+        
+        # If super_admin and brand_id is empty, resolve to default brand from settings
+        if not brand_id_str and payload.get("role") == "super_admin":
+            from sqlalchemy import select
+            from shared.database.tenant_models import Brand
+            brand = db.scalar(select(Brand).where(Brand.slug == settings.brand_slug))
+            if brand:
+                brand_id_str = str(brand.id)
+                brand_slug = brand.slug
+                
+        if not brand_id_str:
+            raise ValueError("Token missing brand_id")
+            
+        brand_id = uuid.UUID(brand_id_str)
     except (JWTError, KeyError, ValueError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from exc
 
     store_external = payload.get("store_id")
+    # If store_id is empty, resolve it for brand_admin or super_admin roles
+    if not store_external and payload.get("role") in ("brand_admin", "super_admin"):
+        from sqlalchemy import select
+        from shared.database.tenant_models import Store
+        store = db.scalar(select(Store).where(Store.brand_id == brand_id).limit(1))
+        if store:
+            store_external = store.external_id
+        else:
+            store_external = settings.store_id
+        
     if not store_external:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token missing store_id")
 
-    store = TenantRepository(db).get_store(brand_id, store_external)
-    if store is None:
+    store = None
+    try:
+        store_uuid = uuid.UUID(store_external)
+        from shared.database.tenant_models import Store
+        store = db.get(Store, store_uuid)
+    except (ValueError, TypeError):
+        store = TenantRepository(db).get_store(brand_id, store_external)
+
+    if store is None or store.brand_id != brand_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Store not found for token")
 
     return TenantContext(

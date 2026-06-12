@@ -67,5 +67,26 @@ services:
     #       devices:
     #         - capabilities: [gpu]
 
+  dashboard-ui:
+    build:
+      context: .
+      dockerfile: dashboard-ui/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend-core:8000
+      NEXT_PUBLIC_BRAND_SLUG: orzen-demo
+      NEXT_PUBLIC_STORE_ID: store-001
+      NEXT_PUBLIC_POLL_INTERVAL_MS: "10000"
+    depends_on:
+      backend-core:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 volumes:
   pgdata:

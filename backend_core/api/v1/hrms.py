@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend_core.auth.dependencies import get_tenant_optional
+from backend_core.auth.rbac import UserContext, require_role
 from backend_core.integrations.hrms.factory import get_hrms_adapter
 from backend_core.models.identity import Employee
 from shared.config import get_settings
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api/hrms", tags=["hrms"])
 def sync_employees(
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("brand_admin")),
 ):
     """Pulls employees from configured HRMS and upserts into local Employee table."""
     settings = get_settings()
@@ -69,6 +71,7 @@ def sync_attendance(
     sync_date: Optional[date] = Query(default=None),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("brand_admin")),
 ):
     """Pulls attendance records from HRMS for a date and persists them."""
     settings = get_settings()
@@ -101,6 +104,7 @@ def list_employees(
     active_only: bool = Query(default=True),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("store_manager")),
 ):
     stmt = select(Employee).where(Employee.brand_id == tenant.brand_id)
     if active_only:
@@ -118,6 +122,7 @@ def get_employee(
     employee_id: uuid.UUID,
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("store_manager")),
 ):
     emp = db.get(Employee, employee_id)
     if emp is None or emp.brand_id != tenant.brand_id:

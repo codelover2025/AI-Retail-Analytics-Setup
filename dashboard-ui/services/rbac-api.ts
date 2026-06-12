@@ -25,6 +25,8 @@ export const ROLES = [
   "staff_viewer",
 ] as const;
 
+export type RoleType = (typeof ROLES)[number];
+
 export const PERMISSIONS_MATRIX: Record<string, string[]> = {
   super_admin: ["*"],
   brand_admin: ["dashboard", "reports", "integrations", "admin", "rbac.read"],
@@ -43,3 +45,23 @@ export async function fetchAuditLogs(limit = 50): Promise<AuditLogEntry[]> {
   });
   return data;
 }
+
+export async function registerUser(body: {
+  email: string;
+  password: string;
+  role: RoleType;
+  brand_slug?: string;
+  store_external_id?: string;
+}): Promise<PlatformUser> {
+  const { data } = await apiClient.post<PlatformUser>("/api/rbac/register", body);
+  return data;
+}
+
+export async function updateUserRole(userId: string, role: RoleType): Promise<void> {
+  await apiClient.post(`/api/rbac/users/${userId}/role`, { role });
+}
+
+export async function deactivateUser(userId: string): Promise<void> {
+  await apiClient.delete(`/api/rbac/users/${userId}`);
+}
+

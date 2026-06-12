@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
+import { getToken } from "@/lib/auth";
 
 /** Browser uses Next rewrite proxy; server-side uses direct URL */
 function resolveBaseUrl(): string {
@@ -15,15 +16,52 @@ function buildClient(): AxiosInstance {
   const storeId = process.env.NEXT_PUBLIC_STORE_ID;
 
   const headers: Record<string, string> = {};
-  if (apiKey) headers["X-API-Key"] = apiKey;
+  // Static headers for tenant context (used as fallback when no JWT)
   if (brandSlug) headers["X-Brand-Slug"] = brandSlug;
   if (storeId) headers["X-Store-Id"] = storeId;
 
-  return axios.create({
+  const client = axios.create({
     baseURL,
     headers,
     timeout: 15000,
   });
+
+  // Request interceptor — inject JWT if available, otherwise fall back to API key
+  client.interceptors.request.use((config) => {
+    const token = getToken();
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+      // Remove API key header when JWT is present
+      delete config.headers["X-API-Key"];
+    } else if (apiKey) {
+      config.headers["X-API-Key"] = apiKey;
+    }
+    return config;
+  });
+
+  // Response interceptor — on 401, clear session and redirect to login
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (
+        error.response?.status === 401 &&
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/login")
+      ) {
+        // Clear stale token
+        import("@/lib/auth").then(({ clearToken }) => {
+          clearToken();
+          // Clear cookie
+          document.cookie = "orzen_auth=; path=/; max-age=0";
+          window.location.href = "/login";
+        });
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
 }
 
 export const apiClient = buildClient();
+

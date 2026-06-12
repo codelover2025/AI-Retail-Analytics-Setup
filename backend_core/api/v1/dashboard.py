@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend_core.auth.dependencies import get_tenant_optional
+from backend_core.auth.rbac import UserContext, require_role
 from backend_core.services.dashboard_service import DashboardService
 from shared.config import get_settings
 from shared.database.session import get_db
@@ -39,6 +40,7 @@ def overview(
     ),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """
     Aggregate visitor metrics across all stores for the authenticated brand.
@@ -64,6 +66,7 @@ def stores_list(
     sort_desc: bool = Query(default=True),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """
     Returns paginated list of stores with their analytics metrics.
@@ -91,6 +94,7 @@ def comparison(
     to_day: Optional[date] = Query(default=None),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """
     Returns side-by-side comparison metrics for selected stores, ranked
@@ -108,6 +112,7 @@ def camera_breakdown(
     days: int = Query(default=30, ge=1, le=365),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     """Per-camera footfall, dwell, and zone data for one store."""
     sid = store_id or tenant.store_external_id

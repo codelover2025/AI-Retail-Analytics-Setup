@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend_core.api.identity_routes import router as identity_router
 from backend_core.api.routes import router as api_router
+from backend_core.api.multi_camera_routes import router as multi_camera_router
 from backend_core.api.v1 import api_v1
 from backend_core.api.websocket import router as ws_router
 from backend_core.api.stream import router as stream_router  # Phase 4 SSE
@@ -69,7 +70,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # ---------------------------------------------------------------------------
 # Routers (Phase 1-3 unchanged + Phase 4 additions)
 # ---------------------------------------------------------------------------
@@ -77,6 +77,7 @@ app.add_middleware(
 app.include_router(api_v1)             # Phase 1-3: /api/v1/...
 app.include_router(identity_router)    # Phase 2 identity
 app.include_router(api_router)         # Phase 3 multi-camera
+app.include_router(multi_camera_router)
 app.include_router(ws_router)          # Phase 1 WebSocket
 app.include_router(stream_router)      # Phase 4 SSE: /stream/...
 

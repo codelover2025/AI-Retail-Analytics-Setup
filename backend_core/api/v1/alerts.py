@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend_core.auth.dependencies import get_tenant_optional
+from backend_core.auth.rbac import UserContext, require_role
 from shared.database.alert_rule_models import AlertRule
 from shared.database.models import Alert
 from shared.database.session import get_db
@@ -64,6 +65,7 @@ def list_alerts(
     page_size: int = Query(default=50, ge=1, le=200),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("staff_viewer")),
 ):
     stmt = select(Alert).where(Alert.brand_id == tenant.brand_id)
     if store_id:
@@ -109,6 +111,7 @@ def acknowledge_alert(
     alert_id: uuid.UUID,
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("store_manager")),
 ):
     alert = db.get(Alert, alert_id)
     if alert is None or alert.brand_id != tenant.brand_id:
@@ -128,6 +131,7 @@ def list_rules(
     alert_type: Optional[str] = Query(default=None),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("store_manager")),
 ):
     stmt = select(AlertRule).where(AlertRule.brand_id == tenant.brand_id)
     if store_id:
@@ -157,6 +161,7 @@ def create_rule(
     body: AlertRuleCreate,
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("brand_admin")),
 ):
     valid_types = {
         "vip_detected", "watchlist_detected", "camera_offline", "low_traffic", "high_crowd"
@@ -186,6 +191,7 @@ def update_rule(
     body: AlertRuleUpdate,
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("brand_admin")),
 ):
     rule = db.get(AlertRule, rule_id)
     if rule is None or rule.brand_id != tenant.brand_id:
@@ -209,6 +215,7 @@ def delete_rule(
     rule_id: uuid.UUID,
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
+    _user: UserContext = Depends(require_role("brand_admin")),
 ):
     rule = db.get(AlertRule, rule_id)
     if rule is None or rule.brand_id != tenant.brand_id:
