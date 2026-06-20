@@ -38,8 +38,8 @@ async def detailed_health(
     """
     results: dict = {
         "status": "ok",
-        "version": "4.0.0",
-        "phase": 4,
+        "version": "5.0.0",
+        "phase": 5,
         "env": settings.app_env,
         "uptime_seconds": round(time.monotonic() - _start_time, 1),
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -49,7 +49,34 @@ async def detailed_health(
     # Database check
     try:
         db.execute(text("SELECT 1"))
-        results["subsystems"]["database"] = {"status": "ok", "type": db.bind.dialect.name}  # type: ignore
+        db_type = db.bind.dialect.name
+        
+        # Connection pool metrics
+        pool = getattr(db.bind, "pool", None)
+        pool_status = {}
+        if pool:
+            pool_status["class"] = pool.__class__.__name__
+            if hasattr(pool, "size") and callable(pool.size):
+                try:
+                    pool_status["size"] = pool.size()
+                except Exception:
+                    pass
+            if hasattr(pool, "checkedin") and callable(pool.checkedin):
+                try:
+                    pool_status["checkedin"] = pool.checkedin()
+                except Exception:
+                    pass
+            if hasattr(pool, "checkedout") and callable(pool.checkedout):
+                try:
+                    pool_status["checkedout"] = pool.checkedout()
+                except Exception:
+                    pass
+                    
+        results["subsystems"]["database"] = {
+            "status": "ok",
+            "type": db_type,
+            "pool": pool_status
+        }
     except Exception as exc:
         results["subsystems"]["database"] = {"status": "error", "error": str(exc)[:100]}
         results["status"] = "degraded"

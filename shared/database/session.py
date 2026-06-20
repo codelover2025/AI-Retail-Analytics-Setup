@@ -14,6 +14,8 @@ from shared.database import demographics_models  # noqa: F401 — register demog
 from shared.database import report_models  # noqa: F401
 from shared.database import alert_rule_models  # noqa: F401
 from shared.database import rbac_models  # noqa: F401
+# Phase 5 models
+from shared.database import ai_models  # noqa: F401
 
 settings = get_settings()
 

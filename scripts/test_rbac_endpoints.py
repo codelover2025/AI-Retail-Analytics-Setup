@@ -69,6 +69,8 @@ client = TestClient(app)
 
 def test_rbac_flow():
     global current_caller
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
     db = TestingSessionLocal()
 
     # Seed Brands

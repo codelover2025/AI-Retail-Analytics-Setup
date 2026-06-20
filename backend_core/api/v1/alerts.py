@@ -119,6 +119,19 @@ def acknowledge_alert(
     alert.acknowledged = True
     db.commit()
     return {"id": str(alert.id), "acknowledged": True}
+def invalidate_rules_cache(brand_id: uuid.UUID) -> None:
+    try:
+        from shared.config import get_settings
+        settings = get_settings()
+        if settings.redis_url:
+            import redis
+            r = redis.from_url(settings.redis_url)
+            pattern = f"alert_rules:{brand_id}:*"
+            keys_to_delete = r.keys(pattern)
+            if keys_to_delete:
+                r.delete(*keys_to_delete)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +195,7 @@ def create_rule(
     db.add(rule)
     db.commit()
     db.refresh(rule)
+    invalidate_rules_cache(tenant.brand_id)
     return {"id": str(rule.id), "alert_type": rule.alert_type, "enabled": rule.enabled}
 
 
@@ -207,6 +221,7 @@ def update_rule(
     if body.config is not None:
         rule.config = body.config
     db.commit()
+    invalidate_rules_cache(tenant.brand_id)
     return {"id": str(rule.id), "updated": True}
 
 
@@ -222,4 +237,5 @@ def delete_rule(
         raise HTTPException(404, "Alert rule not found")
     db.delete(rule)
     db.commit()
+    invalidate_rules_cache(tenant.brand_id)
     return Response(status_code=204)

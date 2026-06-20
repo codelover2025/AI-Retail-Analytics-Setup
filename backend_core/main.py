@@ -24,6 +24,13 @@ from backend_core.api.v1.crm import router as crm_router
 from backend_core.api.v1.rbac import router as rbac_router
 from backend_core.api.v1.health import router as health_router
 
+# Phase 5 routers & security middleware
+from backend_core.api.v1.ai_assistant import router as ai_assistant_router
+from backend_core.api.v1.voice import router as voice_router
+from backend_core.api.v1.analytics_ai import router as analytics_ai_router
+from backend_core.api.v1.recommendation_alert import router as recs_alerts_router
+from backend_core.auth.security_helpers import RateLimitingMiddleware
+
 settings = get_settings()
 
 # ---------------------------------------------------------------------------
@@ -70,6 +77,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitingMiddleware, requests_per_minute=60)
 # ---------------------------------------------------------------------------
 # Routers (Phase 1-3 unchanged + Phase 4 additions)
 # ---------------------------------------------------------------------------
@@ -92,6 +100,12 @@ app.include_router(crm_router)
 app.include_router(rbac_router)
 app.include_router(health_router)
 
+# Phase 5 API routers
+app.include_router(ai_assistant_router)
+app.include_router(voice_router)
+app.include_router(analytics_ai_router)
+app.include_router(recs_alerts_router)
+
 # ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
@@ -103,13 +117,14 @@ _startup_time = time.monotonic()
 def on_startup() -> None:
     init_db()
 
-    # Phase 4 migrations (additive, idempotent)
+    # Phase 4 and Phase 5 migrations (additive, idempotent)
     try:
-        from shared.database.migrations import ensure_phase4_columns
+        from shared.database.migrations import ensure_phase4_columns, ensure_phase5_columns
         ensure_phase4_columns()
-        logger.info("Phase 4 migrations applied")
+        ensure_phase5_columns()
+        logger.info("Phase 4 and Phase 5 migrations applied")
     except Exception as exc:
-        logger.error("Phase 4 migration error: %s", exc)
+        logger.error("Migration error: %s", exc)
 
     # Start report scheduler (APScheduler)
     try:
@@ -134,8 +149,8 @@ def health():
     """Basic liveness probe."""
     return {
         "status": "ok",
-        "phase": 4,
-        "version": "4.0.0",
+        "phase": 5,
+        "version": "5.0.0",
         "uptime_seconds": round(time.monotonic() - _startup_time, 1),
     }
 
@@ -143,7 +158,7 @@ def health():
 @app.get("/api/v1/health", tags=["health"])
 def health_v1():
     """Legacy health endpoint (v1 compat)."""
-    return {"status": "ok", "phase": 4}
+    return {"status": "ok", "phase": 5}
 
 
 def run() -> None:

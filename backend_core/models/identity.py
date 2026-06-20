@@ -73,9 +73,6 @@ class PersonRecognition(Base):
 
 class FaceEmbedding(Base):
     __tablename__ = "face_embeddings"
-    __table_args__ = (
-        Index("ix_face_embeddings_customer_id", "customer_id"),
-    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4

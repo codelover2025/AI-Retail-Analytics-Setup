@@ -55,11 +55,56 @@ class AlertEngine:
     # Rule loading
     # ------------------------------------------------------------------
 
+    def _get_redis(self) -> Optional[Any]:
+        if not hasattr(self, "_redis_client"):
+            if not self.settings or not getattr(self.settings, "redis_url", None):
+                self._redis_client = None
+            else:
+                try:
+                    import redis
+                    self._redis_client = redis.from_url(self.settings.redis_url, decode_responses=True)
+                except Exception as exc:
+                    logger.warning("Failed to connect to Redis for caching: %s", exc)
+                    self._redis_client = None
+        return self._redis_client
+
     def _load_rules(
         self,
         alert_type: str,
         store_id: Optional[str] = None,
     ) -> list[AlertRule]:
+        import json
+        r_client = self._get_redis()
+        cache_key = f"alert_rules:{self.brand_id}:{alert_type}:{store_id or 'all'}"
+        
+        if r_client:
+            try:
+                cached_data = r_client.get(cache_key)
+                if cached_data:
+                    data = json.loads(cached_data)
+                    rules = []
+                    for d in data:
+                        rules.append(
+                            AlertRule(
+                                id=uuid.UUID(d["id"]) if d.get("id") else uuid.uuid4(),
+                                brand_id=uuid.UUID(d["brand_id"]) if d.get("brand_id") else self.brand_id,
+                                store_id=d.get("store_id"),
+                                alert_type=d.get("alert_type"),
+                                threshold=d.get("threshold"),
+                                enabled=d.get("enabled", True),
+                                channels=d.get("channels", []),
+                                recipients=d.get("recipients", []),
+                                config=d.get("config", {}),
+                                created_at=datetime.fromisoformat(d["created_at"]) if d.get("created_at") else None,
+                                updated_at=datetime.fromisoformat(d["updated_at"]) if d.get("updated_at") else None,
+                            )
+                        )
+                    logger.debug("Loaded alert rules from Redis cache for key: %s", cache_key)
+                    return rules
+            except Exception as e:
+                logger.warning("Failed to load alert rules from cache: %s", e)
+
+        # Database Fallback
         stmt = select(AlertRule).where(
             AlertRule.brand_id == self.brand_id,
             AlertRule.alert_type == alert_type,
@@ -69,7 +114,31 @@ class AlertEngine:
             stmt = stmt.where(
                 (AlertRule.store_id == store_id) | (AlertRule.store_id == None)
             )
-        return list(self.db.scalars(stmt).all())
+        db_rules = list(self.db.scalars(stmt).all())
+
+        if r_client:
+            try:
+                rule_dicts = []
+                for r in db_rules:
+                    rule_dicts.append({
+                        "id": str(r.id),
+                        "brand_id": str(r.brand_id),
+                        "store_id": r.store_id,
+                        "alert_type": r.alert_type,
+                        "threshold": r.threshold,
+                        "enabled": r.enabled,
+                        "channels": r.channels,
+                        "recipients": r.recipients,
+                        "config": r.config,
+                        "created_at": r.created_at.isoformat() if r.created_at else None,
+                        "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+                    })
+                r_client.setex(cache_key, 300, json.dumps(rule_dicts))
+                logger.debug("Cached alert rules in Redis for key: %s", cache_key)
+            except Exception as e:
+                logger.warning("Failed to cache alert rules: %s", e)
+
+        return db_rules
 
     # ------------------------------------------------------------------
     # Cooldown check

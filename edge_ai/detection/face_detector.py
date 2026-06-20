@@ -53,10 +53,22 @@ class FaceDetector:
             import onnxruntime as ort
 
             available = ort.get_available_providers()
+            providers = []
+            
+            # 1. Prefer TensorRT if available
+            if "TensorrtExecutionProvider" in available:
+                providers.append("TensorrtExecutionProvider")
+            # 2. CUDA fallback
             if "CUDAExecutionProvider" in available:
-                return ["CUDAExecutionProvider", "CPUExecutionProvider"]
-        except Exception:
-            pass
+                providers.append("CUDAExecutionProvider")
+                
+            providers.append("CPUExecutionProvider")
+            
+            # Log selected providers
+            logger.info("Configured ONNX Execution Providers: %s", providers)
+            return providers
+        except Exception as exc:
+            logger.warning("Error resolving ONNX providers: %s", exc)
         return None
 
     def detect(self, frame: np.ndarray) -> list[DetectedFace]:

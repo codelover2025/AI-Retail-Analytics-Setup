@@ -237,3 +237,54 @@ def ensure_phase4_columns() -> None:
             with engine.begin() as conn:
                 for s in stmts:
                     conn.execute(text(s))
+
+
+def ensure_phase5_columns() -> None:
+    """
+    Additive Phase 5 migrations — registers chat tables and optimization indexes.
+    """
+    from shared.database.session import engine, is_sqlite
+    
+    # 1. Create chat history tables
+    import shared.database.ai_models  # noqa: F401
+    from shared.database.models import Base
+    Base.metadata.create_all(bind=engine)
+
+    # 2. Add performance indexes for POS, HRMS, and Recognitions if they exist
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+
+    with engine.begin() as conn:
+        # Index on pos_purchases
+        if "pos_purchases" in existing_tables:
+            try:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pos_purchases_brand_store_ts ON pos_purchases (brand_id, store_id, timestamp)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pos_purchases_visitor_id ON pos_purchases (visitor_id)"))
+            except Exception:
+                pass
+
+        # Index on hrms_attendance_syncs
+        if "hrms_attendance_syncs" in existing_tables:
+            try:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_hrms_attendance_syncs_brand_emp_verified ON hrms_attendance_syncs (brand_id, employee_id, verified_at)"))
+            except Exception:
+                pass
+
+        # Index on person_recognitions
+        if "person_recognitions" in existing_tables:
+            try:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_person_recognitions_brand_store_type_ts ON person_recognitions (brand_id, store_id, type, timestamp)"))
+            except Exception:
+                pass
+
+    # 3. Patch demographics_daily table with updated_at column if missing
+    if "demographics_daily" in existing_tables:
+        cols = {c["name"] for c in insp.get_columns("demographics_daily")}
+        if "updated_at" not in cols:
+            try:
+                with engine.begin() as conn:
+                    col_type = "DATETIME" if is_sqlite() else "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+                    conn.execute(text(f"ALTER TABLE demographics_daily ADD COLUMN updated_at {col_type}"))
+            except Exception:
+                pass
+

@@ -41,10 +41,11 @@ def issue_token(
 
     token = create_access_token(
         settings,
-        subject=body.subject,
         brand_id=str(brand.id),
         brand_slug=brand.slug,
-        extra={"store_id": store.external_id},
+        store_id=store.external_id,
+        role="staff_viewer",
+        extra={"subject": body.subject},
     )
     return TokenResponse(
         access_token=token,

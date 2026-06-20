@@ -34,6 +34,7 @@ from backend_core.auth.rbac import (
     UserContext,
     log_audit_event,
     require_role,
+    get_current_user,
 )
 from shared.config import Settings, get_settings
 from shared.database.audit_models import AuditLog
@@ -340,3 +341,46 @@ def get_audit_logs(
         }
         for r in rows
     ]
+
+
+class DashboardPermissions(BaseModel):
+    role: str
+    email: Optional[str] = None
+    brand_id: Optional[str] = None
+    store_id: Optional[str] = None
+    permissions: dict[str, bool]
+
+
+@router.get("/api/rbac/me", response_model=DashboardPermissions, summary="Get current logged-in user permissions")
+def get_me(
+    current_user: UserContext = Depends(get_current_user),
+):
+    """
+    Returns current user information and exact dashboard module permissions
+    based on their RBAC role level.
+    """
+    role = current_user.role
+    
+    # Define capabilities matrix
+    permissions = {
+        "system_admin_panel": current_user.has_role("super_admin"),
+        "brand_dashboard": current_user.has_role("brand_admin"),
+        "store_analytics": current_user.has_role("staff_viewer"),
+        "live_footfall": current_user.has_role("staff_viewer"),
+        "pos_transactions": current_user.has_role("store_manager"),
+        "crm_profiles": current_user.has_role("store_manager"),
+        "voice_queries": current_user.has_role("staff_viewer"),
+        "predictive_forecasts": current_user.has_role("store_manager"),
+        "alerts_engine": current_user.has_role("store_manager"),
+        "system_audit_logs": current_user.has_role("brand_admin"),
+        "role_management": current_user.has_role("brand_admin"),
+    }
+    
+    return DashboardPermissions(
+        role=role,
+        email=current_user.email,
+        brand_id=current_user.brand_id,
+        store_id=current_user.store_id,
+        permissions=permissions
+    )
+
