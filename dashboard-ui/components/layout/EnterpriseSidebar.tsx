@@ -24,6 +24,12 @@ import {
   UserCircle,
   Users,
   BadgeCheck,
+  Bot,
+  Sparkles,
+  Cpu,
+  BookOpen,
+  MessageSquare,
+  LineChart,
 } from "lucide-react";
 import { OrzenLogo } from "@/components/OrzenLogo";
 import { ThemeToggle } from "@/components/enterprise/ThemeToggle";
@@ -39,6 +45,7 @@ const sections: NavSection[] = [
       { href: "/stores", label: "Multi-store", icon: Store },
       { href: "/executive", label: "Executive", icon: BarChart3 },
       { href: "/", label: "Store live", icon: LayoutDashboard },
+      { href: "/assistant", label: "AI Assistant", icon: Bot },
     ],
   },
   {
@@ -48,6 +55,8 @@ const sections: NavSection[] = [
       { href: "/multi-camera", label: "Multi-camera", icon: Cctv },
       { href: "/heatmap", label: "Heatmap", icon: Flame },
       { href: "/journey", label: "Journey mapping", icon: GitFork },
+      { href: "/predictive", label: "Predictive AI", icon: LineChart },
+      { href: "/recommendations", label: "AI Recommendations", icon: Sparkles },
     ],
   },
   {
@@ -70,6 +79,8 @@ const sections: NavSection[] = [
       { href: "/admin", label: "Admin", icon: Building2 },
       { href: "/admin/roles", label: "Roles & RBAC", icon: Shield },
       { href: "/settings", label: "Settings", icon: Settings2 },
+      { href: "/performance", label: "System health", icon: Cpu },
+      { href: "/docs", label: "Documentation", icon: BookOpen },
     ],
   },
   {
