@@ -23,7 +23,7 @@ try {
 
 if (-not $apiUp) {
     Write-Host ""
-    Write-Host "API not running on :8000 — start in another terminal:" -ForegroundColor Yellow
+    Write-Host "API not running on :8000 - start in another terminal:" -ForegroundColor Yellow
     Write-Host "  uvicorn backend_core.main:app --reload --port 8000"
     Write-Host ""
     Write-Host "Then re-run: .\scripts\complete_phase1_handoff.ps1"
