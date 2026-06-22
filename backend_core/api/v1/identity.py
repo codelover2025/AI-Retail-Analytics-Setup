@@ -41,24 +41,28 @@ def v1_create_customer(
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
-    svc = IdentityCustomerService(db)
-    person_id = uuid.UUID(payload.id) if payload.id else uuid.uuid4()
-    cust = svc.create_or_update_customer(
-        person_id=person_id,
-        brand_id=tenant.brand_id,
-        first_seen=payload.first_seen,
-        last_seen=payload.last_seen,
-        visit_count=payload.visit_count,
-    )
-    if payload.embedding:
-        svc.enroll_face_embedding(customer_id=cust.id, embedding=payload.embedding)
-        db.commit()
-    return CustomerOut(
-        id=str(cust.id),
-        first_seen=cust.first_seen,
-        last_seen=cust.last_seen,
-        visit_count=cust.visit_count,
-    )
+    return IdentityCustomerService(db).create_customer(tenant.brand_id, payload)
+
+
+@router.put("/customers/{customer_id}", response_model=CustomerOut)
+def v1_put_customer(
+    customer_id: str,
+    payload: CustomerCreateIn,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    payload.id = customer_id
+    return IdentityCustomerService(db).create_customer(tenant.brand_id, payload)
+
+
+@router.delete("/customers/{customer_id}")
+def v1_delete_customer(
+    customer_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    IdentityCustomerService(db).delete_customer(uuid.UUID(customer_id), tenant.brand_id)
+    return {"status": "ok", "message": "Customer deleted successfully"}
 
 
 @router.get("/customers/{customer_id}", response_model=CustomerOut)
@@ -67,15 +71,10 @@ def v1_get_customer(
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
-    cust = db.get(Customer, uuid.UUID(customer_id))
-    if cust is None or (cust.brand_id is not None and cust.brand_id != tenant.brand_id):
+    cust = IdentityCustomerService(db).get_customer(uuid.UUID(customer_id))
+    if cust.brand_id is not None and cust.brand_id != tenant.brand_id:
         raise HTTPException(status_code=404, detail="Customer not found")
-    return CustomerOut(
-        id=str(cust.id),
-        first_seen=cust.first_seen,
-        last_seen=cust.last_seen,
-        visit_count=cust.visit_count,
-    )
+    return IdentityCustomerService(db)._to_out(cust)
 
 
 @router.patch("/customers/{customer_id}", response_model=CustomerOut)
@@ -85,24 +84,7 @@ def v1_update_customer(
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
-    svc = IdentityCustomerService(db)
-    cust = db.get(Customer, uuid.UUID(customer_id))
-    if cust is None or (cust.brand_id is not None and cust.brand_id != tenant.brand_id):
-        raise HTTPException(status_code=404, detail="Customer not found")
-    updated = svc.create_or_update_customer(
-        person_id=cust.id,
-        brand_id=tenant.brand_id,
-        first_seen=payload.first_seen,
-        last_seen=payload.last_seen,
-        visit_count=payload.visit_count,
-    )
-    db.commit()
-    return CustomerOut(
-        id=str(updated.id),
-        first_seen=updated.first_seen,
-        last_seen=updated.last_seen,
-        visit_count=updated.visit_count,
-    )
+    return IdentityCustomerService(db).update_customer(uuid.UUID(customer_id), tenant.brand_id, payload)
 
 
 @router.post("/customers/{customer_id}/enroll", response_model=CustomerOut)
@@ -113,23 +95,37 @@ def v1_enroll_customer_embedding(
     db: Session = Depends(get_db),
 ):
     svc = IdentityCustomerService(db)
-    cust = db.get(Customer, uuid.UUID(customer_id))
-    if cust is None or (cust.brand_id is not None and cust.brand_id != tenant.brand_id):
-        raise HTTPException(status_code=404, detail="Customer not found")
-    svc.enroll_face_embedding(customer_id=cust.id, embedding=payload.embedding)
-    db.commit()
-    return CustomerOut(
-        id=str(cust.id),
-        first_seen=cust.first_seen,
-        last_seen=cust.last_seen,
-        visit_count=cust.visit_count,
-    )
+    svc.enroll_face_embedding(customer_id=uuid.UUID(customer_id), embedding=payload.embedding)
+    return svc._to_out(svc.get_customer(uuid.UUID(customer_id)))
 
 
-@router.get(
-    "/visitors/{person_id}/visits",
-    response_model=list[RecognitionOut],
-)
+@router.post("/customers/{customer_id}/enroll-face", response_model=CustomerOut)
+async def v1_enroll_customer_face(
+    customer_id: str,
+    photos: list[UploadFile] = File(...),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    if not photos:
+        raise HTTPException(status_code=400, detail="At least one photo required")
+    from shared.face_enrollment import embedding_from_upload
+    embedding = embedding_from_upload([await p.read() for p in photos])
+
+    svc = IdentityCustomerService(db)
+    svc.enroll_face_embedding(customer_id=uuid.UUID(customer_id), embedding=embedding)
+    return svc._to_out(svc.get_customer(uuid.UUID(customer_id)))
+
+
+@router.delete("/customers/{customer_id}/enroll-face", response_model=CustomerOut)
+def v1_delete_customer_face(
+    customer_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return IdentityCustomerService(db).delete_customer_face(uuid.UUID(customer_id), tenant.brand_id)
+
+
+@router.get("/visitors/{person_id}/visits", response_model=list[RecognitionOut])
 def v1_get_visits_for_person(
     person_id: str,
     repeat_only: bool = Query(default=False),
@@ -143,10 +139,7 @@ def v1_get_visits_for_person(
     )
 
 
-@router.get(
-    "/repeat-visitors/{person_id}/visits",
-    response_model=list[RecognitionOut],
-)
+@router.get("/repeat-visitors/{person_id}/visits", response_model=list[RecognitionOut])
 def v1_get_repeat_visits_for_person(
     person_id: str,
     limit: int = Query(default=500, ge=1, le=2000),
@@ -175,6 +168,27 @@ def v1_create_employee(
     db: Session = Depends(get_db),
 ):
     return IdentityEmployeeService(db).create_employee(tenant.brand_id, payload)
+
+
+@router.put("/employees/{employee_id}", response_model=EmployeeOut)
+def v1_put_employee(
+    employee_id: str,
+    payload: EmployeeCreateIn,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    payload.id = employee_id
+    return IdentityEmployeeService(db).create_employee(tenant.brand_id, payload)
+
+
+@router.delete("/employees/{employee_id}")
+def v1_delete_employee(
+    employee_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    IdentityEmployeeService(db).delete_employee(uuid.UUID(employee_id), tenant.brand_id)
+    return {"status": "ok", "message": "Employee deleted successfully"}
 
 
 @router.post("/employees/upload", response_model=EmployeeOut)
@@ -231,6 +245,30 @@ async def v1_re_enroll_employee(
     )
 
 
+@router.post("/employees/{employee_id}/enroll-face", response_model=EmployeeOut)
+async def v1_enroll_employee_face(
+    employee_id: str,
+    photos: list[UploadFile] = File(...),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    if not photos:
+        raise HTTPException(status_code=400, detail="At least one photo required")
+    files = [await p.read() for p in photos]
+    return IdentityEmployeeService(db).re_enroll_from_images(
+        uuid.UUID(employee_id), tenant.brand_id, files
+    )
+
+
+@router.delete("/employees/{employee_id}/enroll-face", response_model=EmployeeOut)
+def v1_delete_employee_face(
+    employee_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return IdentityEmployeeService(db).delete_employee_face(uuid.UUID(employee_id), tenant.brand_id)
+
+
 @router.get("/stats", response_model=IdentityStatsOut)
 def v1_get_identity_stats(
     tenant: TenantContext = Depends(get_tenant_optional),
@@ -281,4 +319,3 @@ def v1_get_identity_stats(
         new_visitors_today=int(new_visitors_today),
         employee_tags=int(employee_tags),
     )
-

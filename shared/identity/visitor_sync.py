@@ -38,9 +38,11 @@ def upsert_employee_visitor(
     employee_id: uuid.UUID,
     name: str,
     embedding: list[float],
+    brand_id: uuid.UUID | None = None,
 ) -> Visitor:
     """Create or update Visitor row for edge pipeline employee matching."""
-    brand_id = resolve_brand_id(db, settings)
+    if brand_id is None:
+        brand_id = resolve_brand_id(db, settings)
     store = PersonGalleryStore(db, settings, brand_id)
     visitor = find_employee_visitor(db, settings, brand_id, employee_id)
     if visitor is None:

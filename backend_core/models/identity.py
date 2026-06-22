@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, func, Index
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Uuid, func, Index, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database.models import Base
@@ -24,6 +24,17 @@ class Customer(Base):
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     visit_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    # Enrollment fields
+    name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    membership_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    loyalty_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_vip: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    preferred_store: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_watchlist: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     embeddings: Mapped[list["FaceEmbedding"]] = relationship(back_populates="customer")
 
@@ -50,6 +61,16 @@ class Employee(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    # Enrollment fields
+    email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    department: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    designation: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    store_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    branch: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    joining_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    employee_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
 
 class PersonRecognition(Base):

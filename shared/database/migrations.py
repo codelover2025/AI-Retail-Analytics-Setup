@@ -288,3 +288,68 @@ def ensure_phase5_columns() -> None:
             except Exception:
                 pass
 
+
+def ensure_enrollment_system_columns() -> None:
+    """Idempotently add enrollment columns to employees and customers tables."""
+    from shared.database.session import engine, is_sqlite
+
+    sqlite = is_sqlite()
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+
+    # Ensure tables are registered/created first
+    from shared.database.models import Base
+    import backend_core.models.identity
+    Base.metadata.create_all(bind=engine)
+
+    statements = []
+
+    if "employees" in existing_tables:
+        emp_cols = {c["name"] for c in insp.get_columns("employees")}
+        if "email" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN email VARCHAR(256)")
+        if "phone" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN phone VARCHAR(32)")
+        if "department" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN department VARCHAR(128)")
+        if "designation" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN designation VARCHAR(128)")
+        if "store_id" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN store_id VARCHAR(64)")
+        if "branch" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN branch VARCHAR(128)")
+        if "joining_date" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN joining_date DATETIME" if sqlite else "ALTER TABLE employees ADD COLUMN joining_date TIMESTAMP WITH TIME ZONE")
+        if "employee_code" not in emp_cols:
+            statements.append("ALTER TABLE employees ADD COLUMN employee_code VARCHAR(64)")
+
+    if "customers" in existing_tables:
+        cust_cols = {c["name"] for c in insp.get_columns("customers")}
+        if "name" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN name VARCHAR(256)")
+        if "phone" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN phone VARCHAR(32)")
+        if "email" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN email VARCHAR(256)")
+        if "membership_id" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN membership_id VARCHAR(64)")
+        if "loyalty_points" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN loyalty_points INTEGER DEFAULT 0 NOT NULL")
+        if "is_vip" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN is_vip INTEGER DEFAULT 0 NOT NULL" if sqlite else "ALTER TABLE customers ADD COLUMN is_vip BOOLEAN DEFAULT FALSE NOT NULL")
+        if "preferred_store" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN preferred_store VARCHAR(64)")
+        if "notes" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN notes TEXT")
+        if "is_watchlist" not in cust_cols:
+            statements.append("ALTER TABLE customers ADD COLUMN is_watchlist INTEGER DEFAULT 0 NOT NULL" if sqlite else "ALTER TABLE customers ADD COLUMN is_watchlist BOOLEAN DEFAULT FALSE NOT NULL")
+
+    if statements:
+        with engine.begin() as conn:
+            for s in statements:
+                try:
+                    conn.execute(text(s))
+                except Exception:
+                    pass
+
+

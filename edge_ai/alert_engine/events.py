@@ -50,6 +50,17 @@ class AlertEngine:
         if meta.get("person_kind") == "employee":
             return events
 
+        # Watchlist match check
+        if meta.get("is_watchlist") or visitor.is_vip is False and visitor.metadata_ and visitor.metadata_.get("is_watchlist"):
+            events.append(
+                self._emit(
+                    alert_type="watchlist_match",
+                    message=f"Watchlist alert: {visitor.display_name} matched blacklist",
+                    visitor=visitor,
+                    payload={"track_id": track_id, "confidence": confidence},
+                )
+            )
+
         if visitor.is_vip:
             events.append(
                 self._emit(

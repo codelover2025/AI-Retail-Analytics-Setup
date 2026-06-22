@@ -75,3 +75,38 @@ def embedding_from_upload(
     if mean.shape[0] != EMBEDDING_DIM:
         raise ValueError(f"Invalid embedding dimension {mean.shape[0]}")
     return FaceEmbedder.to_list(mean)
+
+
+def check_duplicate_face(
+    db: Session,
+    embedding: list[float],
+    current_person_id: uuid.UUID | None = None,
+    threshold: float = 0.65,
+) -> tuple[bool, str | None]:
+    """
+    Check if the embedding already exists for another user in the database.
+    Returns (is_duplicate, duplicate_name).
+    """
+    from shared.database.models import Visitor
+    from sqlalchemy import select
+    import numpy as np
+
+    emb_arr = np.array(embedding, dtype=np.float32)
+    emb_norm = emb_arr / (np.linalg.norm(emb_arr) + 1e-8)
+
+    stmt = select(Visitor)
+    visitors = db.scalars(stmt).all()
+    for v in visitors:
+        if current_person_id and v.id == current_person_id:
+            continue
+        if not v.embedding or len(v.embedding) != len(embedding):
+            continue
+        stored = np.array(v.embedding, dtype=np.float32)
+        stored_norm = stored / (np.linalg.norm(stored) + 1e-8)
+        score = float(np.dot(emb_norm, stored_norm))
+        if score >= threshold:
+            name = v.display_name or f"Visitor-{v.id}"
+            return True, name
+
+    return False, None
+

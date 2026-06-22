@@ -31,17 +31,25 @@ from shared.database.session import get_db
 from backend_core.api.v1.identity import (
     v1_get_customers,
     v1_create_customer,
+    v1_put_customer,
+    v1_delete_customer,
     v1_get_customer,
     v1_update_customer,
     v1_enroll_customer_embedding,
+    v1_enroll_customer_face,
+    v1_delete_customer_face,
     v1_get_visits_for_person,
     v1_get_repeat_visits_for_person,
     v1_get_employees,
     v1_create_employee,
+    v1_put_employee,
+    v1_delete_employee,
     v1_create_employee_from_photos,
     v1_get_employee,
     v1_update_employee,
     v1_re_enroll_employee,
+    v1_enroll_employee_face,
+    v1_delete_employee_face,
     v1_get_identity_stats,
 )
 
@@ -64,6 +72,25 @@ def create_customer(
     db: Session = Depends(get_db),
 ):
     return v1_create_customer(payload=payload, tenant=tenant, db=db)
+
+
+@router.put("/customers/{customer_id}", response_model=CustomerOut)
+def put_customer(
+    customer_id: str,
+    payload: CustomerCreateIn,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return v1_put_customer(customer_id=customer_id, payload=payload, tenant=tenant, db=db)
+
+
+@router.delete("/customers/{customer_id}")
+def delete_customer(
+    customer_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return v1_delete_customer(customer_id=customer_id, tenant=tenant, db=db)
 
 
 @router.get("/customers/{customer_id}", response_model=CustomerOut)
@@ -95,13 +122,31 @@ def enroll_customer_embedding(
     return v1_enroll_customer_embedding(customer_id=customer_id, payload=payload, tenant=tenant, db=db)
 
 
+@router.post("/customers/{customer_id}/enroll-face", response_model=CustomerOut)
+async def enroll_customer_face(
+    customer_id: str,
+    photos: list[UploadFile] = File(...),
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return await v1_enroll_customer_face(customer_id=customer_id, photos=photos, tenant=tenant, db=db)
+
+
+@router.delete("/customers/{customer_id}/enroll-face", response_model=CustomerOut)
+def delete_customer_face(
+    customer_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return v1_delete_customer_face(customer_id=customer_id, tenant=tenant, db=db)
+
+
 @router.get("/recognitions", response_model=list[RecognitionOut])
 def get_recognitions(
     limit: int = Query(default=500, ge=1, le=1000),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
-    # Unique to legacy router
     return IdentityRecognitionService(db).list_recognitions(brand_id=tenant.brand_id, limit=limit)
 
 
@@ -129,7 +174,6 @@ def get_repeat_visitors(
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
-    # Unique to legacy router
     return IdentityCustomerService(db).list_repeat_visitors_filtered(
         brand_id=tenant.brand_id, min_visits=min_visits, limit=limit
     )
@@ -161,6 +205,25 @@ def create_employee(
     db: Session = Depends(get_db),
 ):
     return v1_create_employee(payload=payload, tenant=tenant, db=db)
+
+
+@router.put("/employees/{employee_id}", response_model=EmployeeOut)
+def put_employee(
+    employee_id: str,
+    payload: EmployeeCreateIn,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return v1_put_employee(employee_id=employee_id, payload=payload, tenant=tenant, db=db)
+
+
+@router.delete("/employees/{employee_id}")
+def delete_employee(
+    employee_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return v1_delete_employee(employee_id=employee_id, tenant=tenant, db=db)
 
 
 @router.post("/employees/upload", response_model=EmployeeOut)
@@ -209,31 +272,23 @@ async def re_enroll_employee(
     return await v1_re_enroll_employee(employee_id=employee_id, photos=photos, tenant=tenant, db=db)
 
 
-@router.post("/customers/{customer_id}/enroll-photo", response_model=CustomerOut)
-async def enroll_customer_from_photos(
-    customer_id: str,
+@router.post("/employees/{employee_id}/enroll-face", response_model=EmployeeOut)
+async def enroll_employee_face(
+    employee_id: str,
     photos: list[UploadFile] = File(...),
     tenant: TenantContext = Depends(get_tenant_optional),
     db: Session = Depends(get_db),
 ):
-    # Unique to legacy router
-    if not photos:
-        raise HTTPException(status_code=400, detail="At least one photo required")
-    from shared.face_enrollment import embedding_from_upload
+    return await v1_enroll_employee_face(employee_id=employee_id, photos=photos, tenant=tenant, db=db)
 
-    svc = IdentityCustomerService(db)
-    cust = db.get(Customer, _uuid.UUID(customer_id))
-    if cust is None or (cust.brand_id is not None and cust.brand_id != tenant.brand_id):
-        raise HTTPException(status_code=404, detail="Customer not found")
-    embedding = embedding_from_upload([await p.read() for p in photos])
-    svc.enroll_face_embedding(customer_id=cust.id, embedding=embedding)
-    db.commit()
-    return CustomerOut(
-        id=str(cust.id),
-        first_seen=cust.first_seen,
-        last_seen=cust.last_seen,
-        visit_count=cust.visit_count,
-    )
+
+@router.delete("/employees/{employee_id}/enroll-face", response_model=EmployeeOut)
+def delete_employee_face(
+    employee_id: str,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    return v1_delete_employee_face(employee_id=employee_id, tenant=tenant, db=db)
 
 
 @router.get("/identity-stats", response_model=IdentityStatsOut)
@@ -251,5 +306,4 @@ def ingest_recognition(
     db: Session = Depends(get_db),
 ):
     """AI pipeline posts raw events here — no matching logic in this layer."""
-    # Unique to legacy router
     return IdentityRecognitionService(db).ingest(tenant.brand_id, payload)
