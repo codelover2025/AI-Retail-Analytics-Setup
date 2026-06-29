@@ -1,9 +1,28 @@
 import { apiClient } from "./api";
 
 export interface CameraListItem {
-  camera_id: string;
+  camera_id: string; // maps to external_id
+  id?: string; // UUID
   name?: string | null;
   enabled: boolean;
+  rtsp_url?: string;
+  frame_skip?: number | null;
+}
+
+export interface CameraCreateIn {
+  external_id: string;
+  name?: string | null;
+  rtsp_url: string;
+  enabled: boolean;
+  frame_skip?: number | null;
+  store_id?: string;
+}
+
+export interface CameraUpdateIn {
+  name?: string | null;
+  rtsp_url?: string;
+  enabled?: boolean;
+  frame_skip?: number | null;
 }
 
 export interface FootfallCameraPoint {
@@ -69,6 +88,21 @@ export async function fetchCameras(): Promise<CameraListItem[]> {
   const { data } = await apiClient.get<CameraListItem[]>("/api/cameras");
   return data;
 }
+
+export async function createCamera(payload: CameraCreateIn): Promise<CameraListItem> {
+  const { data } = await apiClient.post<CameraListItem>("/api/cameras", payload);
+  return data;
+}
+
+export async function updateCamera(id: string, payload: CameraUpdateIn): Promise<CameraListItem> {
+  const { data } = await apiClient.patch<CameraListItem>(`/api/cameras/${id}`, payload);
+  return data;
+}
+
+export async function deleteCamera(id: string): Promise<void> {
+  await apiClient.delete(`/api/cameras/${id}`);
+}
+
 
 export async function fetchCameraFootfall(
   cameraId?: string,

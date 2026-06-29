@@ -63,11 +63,14 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{data.cameras.length}</p>
-                <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-sm text-muted-foreground">
+                <ul className="mt-2 max-h-24 space-y-1 overflow-y-auto text-sm text-muted-foreground">
                   {data.cameras.map((c) => (
                     <li key={c.camera_id}>{c.name ?? c.camera_id}</li>
                   ))}
                 </ul>
+                <Button size="sm" variant="outline" className="mt-2" asChild>
+                  <Link href="/admin/cameras">Manage cameras</Link>
+                </Button>
               </CardContent>
             </Card>
 

@@ -1,5 +1,6 @@
 """Multi-camera analytics API (/api/footfall, dwell-time, zones, etc.)."""
 
+import uuid
 from datetime import date
 from typing import Optional
 
@@ -11,6 +12,9 @@ from backend_core.schemas.multi_camera import (
     AIAnalyticsIngestBatch,
     AIAnalyticsIngestResponse,
     CameraListItem,
+    CameraCreateIn,
+    CameraUpdateIn,
+    CameraDetailOut,
     DwellTimeStats,
     FootfallCameraResponse,
     InteractionsResponse,
@@ -194,3 +198,40 @@ def get_multi_camera_summary(
         interactions=interactions,
         heatmap=heatmap,
     )
+
+
+@router.post("/cameras", response_model=CameraDetailOut)
+def create_camera(
+    body: CameraCreateIn,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    svc = _svc(db, tenant)
+    out = svc.create_camera(body)
+    db.commit()
+    return out
+
+
+@router.patch("/cameras/{camera_uuid}", response_model=CameraDetailOut)
+def update_camera(
+    camera_uuid: uuid.UUID,
+    body: CameraUpdateIn,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    svc = _svc(db, tenant)
+    out = svc.update_camera(camera_uuid, body)
+    db.commit()
+    return out
+
+
+@router.delete("/cameras/{camera_uuid}")
+def delete_camera(
+    camera_uuid: uuid.UUID,
+    tenant: TenantContext = Depends(get_tenant_optional),
+    db: Session = Depends(get_db),
+):
+    svc = _svc(db, tenant)
+    svc.delete_camera(camera_uuid)
+    db.commit()
+    return {"status": "ok", "message": "Camera deleted successfully"}

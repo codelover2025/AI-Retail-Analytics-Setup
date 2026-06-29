@@ -6,10 +6,41 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+from uuid import UUID
+
 class CameraListItem(BaseModel):
-    camera_id: str
+    camera_id: str  # maps to external_id
+    id: Optional[UUID] = None  # UUID
     name: Optional[str] = None
     enabled: bool = True
+    rtsp_url: Optional[str] = None
+    frame_skip: Optional[int] = None
+
+
+class CameraCreateIn(BaseModel):
+    external_id: str
+    name: Optional[str] = None
+    rtsp_url: str
+    enabled: bool = True
+    frame_skip: Optional[int] = None
+    store_id: Optional[str] = None
+
+
+class CameraUpdateIn(BaseModel):
+    name: Optional[str] = None
+    rtsp_url: Optional[str] = None
+    enabled: Optional[bool] = None
+    frame_skip: Optional[int] = None
+
+
+class CameraDetailOut(BaseModel):
+    id: UUID
+    external_id: str
+    name: Optional[str] = None
+    rtsp_url: str
+    enabled: bool = True
+    frame_skip: Optional[int] = None
+    store_id: UUID
 
 
 class FootfallCameraPoint(BaseModel):

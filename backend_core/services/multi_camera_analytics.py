@@ -11,11 +11,15 @@ from typing import Any, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 
 from backend_core.schemas.multi_camera import (
     AIAnalyticsIngestBatch,
     AIAnalyticsIngestResponse,
     CameraListItem,
+    CameraCreateIn,
+    CameraUpdateIn,
+    CameraDetailOut,
     DwellTimeStats,
     FootfallCameraPoint,
     FootfallCameraResponse,
@@ -32,6 +36,8 @@ from backend_core.schemas.multi_camera import (
     ZoneAnalyticsItem,
     ZoneAnalyticsResponse,
 )
+from shared.database.tenant_repository import TenantRepository
+from edge_ai.camera_ingestion.rtsp_vendors import validate_rtsp_url
 from backend_core.services.analytics_aggregation import upsert_footfall_on_session
 from shared.config import Settings
 from shared.database.analytics_models import (
@@ -108,11 +114,100 @@ class MultiCameraAnalyticsService:
         return [
             CameraListItem(
                 camera_id=c.external_id,
+                id=c.id,
                 name=c.name,
                 enabled=c.enabled,
+                rtsp_url=c.rtsp_url,
+                frame_skip=c.frame_skip,
             )
             for c in cameras
         ]
+
+    def create_camera(self, body: CameraCreateIn) -> CameraDetailOut:
+        store_ext = body.store_id or self.default_store_id
+        if not store_ext:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Store ID is required")
+        store = TenantRepository(self.db).get_store(self.brand_id, store_ext)
+        if not store:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Store not found")
+
+        # Check for duplicates in the store
+        existing = self.db.scalar(
+            select(Camera).where(Camera.store_id == store.id, Camera.external_id == body.external_id)
+        )
+        if existing:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"Camera '{body.external_id}' already exists in this store")
+
+        if not validate_rtsp_url(body.rtsp_url):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid RTSP URL")
+
+        cam = Camera(
+            store_id=store.id,
+            external_id=body.external_id,
+            name=body.name,
+            rtsp_url=body.rtsp_url,
+            enabled=body.enabled,
+            frame_skip=body.frame_skip,
+            metadata_={},
+        )
+        self.db.add(cam)
+        store.config_version += 1
+        self.db.flush()
+        return CameraDetailOut(
+            id=cam.id,
+            external_id=cam.external_id,
+            name=cam.name,
+            rtsp_url=cam.rtsp_url,
+            enabled=cam.enabled,
+            frame_skip=cam.frame_skip,
+            store_id=store.id,
+        )
+
+    def update_camera(self, camera_uuid: uuid.UUID, body: CameraUpdateIn) -> CameraDetailOut:
+        cam = self.db.get(Camera, camera_uuid)
+        if not cam:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Camera not found")
+
+        store = self.db.get(Store, cam.store_id)
+        if not store or store.brand_id != self.brand_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Camera not found for this brand")
+
+        if body.rtsp_url is not None:
+            if not validate_rtsp_url(body.rtsp_url):
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid RTSP URL")
+            cam.rtsp_url = body.rtsp_url
+
+        if body.name is not None:
+            cam.name = body.name
+        if body.enabled is not None:
+            cam.enabled = body.enabled
+        if body.frame_skip is not None:
+            cam.frame_skip = body.frame_skip
+
+        store.config_version += 1
+        self.db.flush()
+        return CameraDetailOut(
+            id=cam.id,
+            external_id=cam.external_id,
+            name=cam.name,
+            rtsp_url=cam.rtsp_url,
+            enabled=cam.enabled,
+            frame_skip=cam.frame_skip,
+            store_id=store.id,
+        )
+
+    def delete_camera(self, camera_uuid: uuid.UUID) -> None:
+        cam = self.db.get(Camera, camera_uuid)
+        if not cam:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Camera not found")
+
+        store = self.db.get(Store, cam.store_id)
+        if not store or store.brand_id != self.brand_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Camera not found for this brand")
+
+        self.db.delete(cam)
+        store.config_version += 1
+        self.db.flush()
 
     def ingest_batch(
         self, batch: AIAnalyticsIngestBatch, store_id: str | None = None
